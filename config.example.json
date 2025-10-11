@@ -1,0 +1,34 @@
+{
+  "api": {
+    "nano_banana_api_key": "YOUR_API_KEY_HERE",
+    "comment": "请在 https://kie.ai/ 申请 Nano-Banana API 密钥"
+  },
+  "model": {
+    "name": "nano-banana",
+    "path": "runwayml/stable-diffusion-v1-5",
+    "device": "auto",
+    "use_mock": false
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 7864,
+    "share": false
+  },
+  "generation": {
+    "default_width": 512,
+    "default_height": 512,
+    "default_steps": 20,
+    "default_guidance": 7.5,
+    "max_width": 1024,
+    "max_height": 1024,
+    "max_steps": 50
+  },
+  "ui": {
+    "title": "Gradio Nano-Banana 文生图",
+    "description": "基于先进的AI模型，将您的想象转化为精美图像",
+    "theme": "soft",
+    "show_tips": true
+  }
+}
+
+

@@ -1,0 +1,3099 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍌 Nano-Banana AI | Vue版本</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- Fabric.js - 功能丰富的Canvas库 -->
+    <!-- 🚨 移除Fabric.js，使用原生Canvas API -->
+    <!-- <script src="https://unpkg.com/fabric@6.0.2/dist/fabric.min.js"></script> -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #app {
+            display: flex;
+            height: 100vh;
+            background: white;
+            overflow: hidden;
+        }
+        
+        /* 左侧边栏 */
+        .sidebar {
+            width: 300px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .sidebar-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .new-chat-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        
+        .conversation-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .conversation-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+        
+        .conversation-card.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .conversation-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .conversation-meta {
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .conversation-card.active .conversation-meta {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .conversation-card:hover .delete-btn {
+            opacity: 1;
+        }
+        
+        .delete-btn:hover {
+            background: #dc2626;
+        }
+        
+        /* 绘图画布样式 */
+        .drawing-section {
+            margin-top: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8fafc;
+        }
+        
+        .drawing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .drawing-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .drawing-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .drawing-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .drawing-btn:hover {
+            background: #f3f4f6;
+        }
+        
+        .drawing-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .color-picker {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .brush-size {
+            width: 60px;
+            font-size: 12px;
+        }
+        
+        .drawing-canvas-container {
+            margin-top: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .drawing-preview {
+            max-width: 200px;
+            max-height: 100px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            margin-top: 8px;
+        }
+        
+        /* 绘图弹窗样式 */
+        .drawing-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .drawing-modal {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .drawing-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .drawing-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+        
+        .drawing-modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .drawing-modal-close:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        
+        .drawing-modal-content {
+            padding: 20px;
+            flex: 1;
+            overflow: auto;
+        }
+        
+        .drawing-modal-toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .drawing-modal-tool-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        
+        .drawing-modal-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .drawing-modal-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        
+        .drawing-modal-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .drawing-modal-canvas-container {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            max-height: 80vh; /* 使用视口高度，更灵活 */
+            overflow: auto; /* 允许滚动以容纳大图片 */
+        }
+        
+        .drawing-modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .drawing-modal-footer-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .drawing-modal-footer-btn.cancel {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .drawing-modal-footer-btn.cancel:hover {
+            background: #4b5563;
+        }
+        
+        .drawing-modal-footer-btn.confirm {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .drawing-modal-footer-btn.confirm:hover {
+            background: #2563eb;
+        }
+        
+        /* AI图片画笔图标 */
+        .ai-image-edit-btn {
+            position: absolute;
+            top: 8px;
+            right: 40px;
+            width: 28px;
+            height: 28px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+        
+        .image-container:hover .ai-image-edit-btn {
+            opacity: 1;
+        }
+        
+        .ai-image-edit-btn:hover {
+            background: rgba(37, 99, 235, 1);
+            transform: scale(1.1);
+        }
+        
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message.user {
+            align-items: flex-end;
+        }
+        
+        .message.assistant {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #1a202c;
+        }
+        
+        .message-image {
+            max-width: 400px;
+            margin-top: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .image-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .image-resolution {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .image-download-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(128, 128, 128, 0.3);
+            color: #333;
+            border: none;
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-download-btn:hover {
+            background: rgba(128, 128, 128, 0.5);
+        }
+        
+        .image-download-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* 复制按钮样式暂时移除 */
+        
+        /* 输入区域 */
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .input-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        
+        
+        .file-upload-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .file-upload-btn {
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .file-upload-btn:hover {
+            background: #e2e8f0;
+        }
+        
+        .file-upload-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .uploaded-image-preview {
+            max-width: 200px;
+            max-height: 100px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            object-fit: cover;
+        }
+        
+        /* 图片预览区域样式 */
+        .images-preview-section {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .image-preview-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .image-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #374151;
+            padding: 4px 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .images-preview-section {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+        
+        /* 消息中的双图显示样式 */
+        .user-images-container {
+            margin-bottom: 8px;
+        }
+        
+        .dual-images-display {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .dual-images-display .image-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .image-label-small {
+            font-size: 10px;
+            font-weight: 500;
+            color: #6b7280;
+            padding: 2px 6px;
+            background: #f3f4f6;
+            border-radius: 3px;
+        }
+        
+        .dual-image {
+            max-width: 120px !important;
+            max-height: 80px !important;
+        }
+        
+        @media (max-width: 768px) {
+            .dual-images-display {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .dual-image {
+                max-width: 150px !important;
+                max-height: 100px !important;
+            }
+        }
+        
+        .clear-image-btn {
+            margin-left: 8px;
+            padding: 4px 8px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .input-box {
+            flex: 1;
+            min-height: 44px;
+            max-height: 120px;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 22px;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        
+        .input-box:focus {
+            border-color: #667eea;
+        }
+        
+        .send-btn {
+            padding: 12px 16px;
+            height: 72px;
+            background: #3b82f6;
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 22px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 60px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        
+        .send-btn:hover {
+            background: #2563eb;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        /* 拖拽上传样式 */
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(59, 130, 246, 0.1);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            border: 3px dashed #3b82f6;
+        }
+        
+        .drag-message {
+            background: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            font-size: 18px;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .input-area.drag-over {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .send-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* 图像比例选择器样式 */
+        .ratio-selector {
+            margin-bottom: 12px;
+        }
+        
+        .ratio-selector-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .ratio-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .ratio-option {
+            padding: 6px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            background: white;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .ratio-option:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+        
+        .ratio-option.selected {
+            border-color: #3b82f6;
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .ratio-option.auto {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .ratio-option.auto:hover {
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+        
+        .ratio-option.auto.selected {
+            background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* 加载状态 */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .loading-dot {
+            width: 4px;
+            height: 4px;
+            background: #64748b;
+            border-radius: 50%;
+            animation: loading 1.4s infinite;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes loading {
+            0%, 80%, 100% { opacity: 0.3; }
+            40% { opacity: 1; }
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #64748b;
+            text-align: center;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .empty-description {
+            font-size: 14px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            #app {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .sidebar {
+                width: 250px;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 左侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">🍌 Nano-Banana AI</div>
+                <button class="new-chat-btn" @click="createNewConversation">
+                    ➕ 新建对话
+                </button>
+            </div>
+            
+            <div class="conversations-list">
+                <div v-if="conversations.length === 0" class="empty-state">
+                    <div class="empty-icon">💬</div>
+                    <div class="empty-title">暂无对话</div>
+                    <div class="empty-description">点击新建对话开始聊天</div>
+                </div>
+                
+                <div 
+                    v-for="conversation in conversations" 
+                    :key="conversation.id"
+                    class="conversation-card"
+                    :class="{ active: currentConversationId === conversation.id }"
+                    @click="loadConversation(conversation.id)"
+                >
+                    <div class="conversation-title">{{ conversation.title }}</div>
+                    <div class="conversation-meta">
+                        <span>{{ conversation.message_count }} 条消息</span>
+                        <span>{{ formatTime(conversation.updated_at) }}</span>
+                    </div>
+                    <button 
+                        class="delete-btn" 
+                        @click.stop="deleteConversation(conversation.id)"
+                        title="删除对话"
+                    >
+                        ✕
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="chat-title">
+                    {{ currentConversation ? currentConversation.title : '' }}
+                </div>
+            </div>
+            
+            <div class="chat-messages" ref="messagesContainer">
+                <div v-if="!currentConversation" class="empty-state">
+                    <div class="empty-icon">🚀</div>
+                    <div class="empty-title">欢迎使用 Nano-Banana AI</div>
+                    <div class="empty-description">选择一个对话或创建新对话开始聊天</div>
+                </div>
+                
+                <div v-if="currentConversation">
+                    <div v-if="currentConversation.messages.length === 0" class="empty-state">
+                        <div class="empty-icon">✨</div>
+                        <div class="empty-title">开始新对话</div>
+                        <div class="empty-description">发送消息开始与AI对话，支持文本聊天和图像生成</div>
+                    </div>
+                    
+                    <div 
+                        v-for="message in currentConversation.messages" 
+                        :key="message.timestamp"
+                        class="message"
+                        :class="message.role"
+                    >
+                        <!-- 复制按钮暂时移除 -->
+                        
+                        <div class="message-content">
+                            <!-- 用户上传的图像显示 -->
+                            <div v-if="message.role === 'user'" class="user-images-container">
+                                <!-- 双图模式显示 -->
+                                <div v-if="message.is_dual_image" class="dual-images-display">
+                                    <div class="image-item">
+                                        <div class="image-label-small">图1</div>
+                                        <img 
+                                            :src="message.input_image_url" 
+                                            class="message-image dual-image"
+                                            @click="openImage(message.input_image_url)"
+                                            alt="图1"
+                                        >
+                                    </div>
+                                    <div v-if="message.image2_url" class="image-item">
+                                        <div class="image-label-small">图2</div>
+                                        <img 
+                                            :src="message.image2_url" 
+                                            class="message-image dual-image"
+                                            @click="openImage(message.image2_url)"
+                                            alt="图2"
+                                        >
+                                    </div>
+                                </div>
+                                <!-- 单图模式显示 -->
+                                <img 
+                                    v-else-if="message.input_image_url"
+                                    :src="message.input_image_url" 
+                                    class="message-image"
+                                    @click="openImage(message.input_image_url)"
+                                    alt="用户上传的图像"
+                                >
+                            </div>
+                            
+                            <!-- 消息文本内容 -->
+                            <div v-if="message.content">{{ message.content }}</div>
+                            
+                            <!-- AI生成的图像 (仅对AI回复显示) -->
+                            <div v-if="message.role === 'assistant' && message.image_url" class="image-container">
+                                <img 
+                                    :src="message.image_url" 
+                                    class="message-image"
+                                    @click="openImage(message.image_url)"
+                                    alt="AI生成的图像"
+                                    style="margin-top: 8px;"
+                                >
+                                <div v-if="message.image_resolution" class="image-resolution">
+                                    {{ message.image_resolution }}
+                                </div>
+                                <button 
+                                    class="image-download-btn" 
+                                    @click="downloadImage(message.image_url)"
+                                    title="下载图像"
+                                >
+                                    ⬇️
+                                </button>
+                                <!-- AI图片编辑按钮 -->
+                                <button 
+                                    class="ai-image-edit-btn" 
+                                    @click="openImageEditModal(message.image_url)"
+                                    title="编辑图片"
+                                >
+                                    🖌️
+                                </button>
+                            </div>
+                        </div>
+                        <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                    </div>
+                    
+                    <div v-if="isLoading" class="message assistant">
+                        <div class="message-content loading">
+                            <span>AI正在思考</span>
+                            <div class="loading-dots">
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <!-- 图像上传控件 -->
+                <div class="input-controls">
+                    <div class="file-upload-wrapper">
+                        <label class="file-upload-btn">
+                            📁 上传图像 (可选)
+                            <input 
+                                type="file" 
+                                class="file-upload-input"
+                                accept="image/*"
+                                @change="handleImageUpload"
+                                ref="fileInput"
+                            >
+                        </label>
+                    </div>
+                    
+                    <!-- 图片预览区域 -->
+                    <div v-if="image1Url || image2Url" class="images-preview-section">
+                        <!-- 图1预览 -->
+                        <div v-if="image1Url" class="image-preview-item">
+                            <div class="image-label">图1</div>
+                            <img :src="image1Url" class="uploaded-image-preview" alt="图1">
+                            <button @click="clearImage1" class="clear-image-btn">清除图1</button>
+                        </div>
+                        
+                        <!-- 图2预览 -->
+                        <div v-if="image2Url" class="image-preview-item">
+                            <div class="image-label">图2</div>
+                            <img :src="image2Url" class="uploaded-image-preview" alt="图2">
+                            <button @click="clearImage2" class="clear-image-btn">清除图2</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 单图模式的预览（兼容性） -->
+                    <div v-if="uploadedImageUrl && !image1Url && !image2Url" style="display: flex; align-items: center; margin-top: 8px;">
+                        <img :src="uploadedImageUrl" class="uploaded-image-preview" alt="上传的图像">
+                        <button @click="clearUploadedImage" class="clear-image-btn">清除</button>
+                    </div>
+                    
+                    <!-- 绘图功能 -->
+                    <button 
+                        class="file-upload-btn" 
+                        @click="openDrawingModal"
+                        style="margin-left: 12px;"
+                    >
+                        🎨 打开绘图
+                    </button>
+                    
+                    <!-- 绘图结果预览 -->
+                    <div v-if="drawingImageUrl" style="margin-top: 8px;">
+                        <img :src="drawingImageUrl" class="drawing-preview" alt="绘图预览">
+                        <button @click="clearDrawingImage" class="clear-image-btn" style="margin-left: 8px; font-size: 12px;">清除绘图</button>
+                    </div>
+                </div>
+                
+                <!-- 图像比例选择器 -->
+                <div class="ratio-selector">
+                    <label class="ratio-selector-label">输出图像比例：</label>
+                    <div class="ratio-options">
+                        <div 
+                            v-for="ratio in ratioOptions" 
+                            :key="ratio.value"
+                            class="ratio-option"
+                            :class="{ 
+                                selected: selectedRatio === ratio.value,
+                                auto: ratio.value === 'auto'
+                            }"
+                            @click="selectRatio(ratio.value)"
+                        >
+                            {{ ratio.label }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 消息输入区域 -->
+                <div class="input-container">
+                    <textarea 
+                        v-model="inputMessage"
+                        class="input-box"
+                        :placeholder="getInputPlaceholder()"
+                        @keydown.enter.prevent="sendMessage"
+                        @input="adjustTextareaHeight"
+                        :disabled="isLoading"
+                        ref="inputTextarea"
+                    ></textarea>
+                    <button 
+                        class="send-btn"
+                        @click="sendMessage"
+                        :disabled="!canSendMessage()"
+                        title="发送消息"
+                    >
+                        生成
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 拖拽上传覆盖层 -->
+        <div v-if="isDragOver" class="drag-overlay">
+            <div class="drag-message">
+                📁 拖放图片到这里上传
+            </div>
+        </div>
+        
+        <!-- 绘图弹窗 -->
+        <div v-if="showDrawingModal" class="drawing-modal-overlay" @click="closeDrawingModal">
+            <div class="drawing-modal" @click.stop>
+                <!-- 弹窗标题栏 -->
+                <div class="drawing-modal-header">
+                    <div class="drawing-modal-title">
+                        {{ modalMode === 'edit' ? '🖼️ 图片编辑' : '🎨 绘图创作' }}
+                    </div>
+                    <button class="drawing-modal-close" @click="closeDrawingModal">
+                        ✕
+                    </button>
+                </div>
+                
+                <!-- 弹窗内容 -->
+                <div class="drawing-modal-content">
+                    <!-- 工具栏 -->
+                    <div class="drawing-modal-toolbar">
+                        <!-- 绘图工具组 -->
+                        <div class="drawing-modal-tool-group">
+                            <button @click="setDrawingMode('pencil')" class="drawing-modal-btn" :class="{ active: drawingMode === 'pencil' }" title="铅笔">✏️</button>
+                            <button @click="setDrawingMode('brush')" class="drawing-modal-btn" :class="{ active: drawingMode === 'brush' }" title="画笔">🖌️</button>
+                            <button @click="setDrawingMode('eraser')" class="drawing-modal-btn" :class="{ active: drawingMode === 'eraser' }" title="橡皮擦">🗑️</button>
+                        </div>
+                        
+                        <!-- 颜色和大小组 -->
+                        <div class="drawing-modal-tool-group">
+                            <input 
+                                type="color" 
+                                v-model="drawingColor" 
+                                class="color-picker"
+                                title="选择颜色"
+                                @change="updateBrushColor"
+                            >
+                            <label style="font-size: 11px;">大小:</label>
+                            <input 
+                                type="range" 
+                                min="1" 
+                                max="50" 
+                                v-model="brushSize"
+                                class="brush-size"
+                                title="画笔大小"
+                                @input="updateBrushSize"
+                            >
+                            <span style="font-size: 11px;">{{ brushSize }}px</span>
+                        </div>
+                        
+                        <!-- 透明度组 -->
+                        <div class="drawing-modal-tool-group">
+                            <label style="font-size: 11px;">透明度:</label>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="1" 
+                                step="0.1"
+                                v-model="brushOpacity"
+                                class="brush-size"
+                                title="透明度"
+                                @input="updateBrushOpacity"
+                            >
+                            <span style="font-size: 11px;">{{ Math.round(brushOpacity * 100) }}%</span>
+                        </div>
+                        
+                        <!-- 操作组 -->
+                        <div class="drawing-modal-tool-group">
+                            <button @click="undoDrawing" class="drawing-modal-btn" :disabled="!canUndo" title="撤销">↶</button>
+                            <button @click="clearCanvas" class="drawing-modal-btn" title="清空">🧹</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 画布容器 -->
+                    <div class="drawing-modal-canvas-container">
+                        <canvas 
+                            ref="modalCanvas"
+                            style="border: 1px solid #ccc; display: block; margin: 0 auto;"
+                        ></canvas>
+                        <!-- 🎯 隐藏的遮罩画布，用于记录涂抹区域 -->
+                        <canvas 
+                            ref="maskCanvas"
+                            style="display: none;"
+                        ></canvas>
+                    </div>
+                </div>
+                
+                <!-- 弹窗底部按钮 -->
+                <div class="drawing-modal-footer">
+                    <button class="drawing-modal-footer-btn cancel" @click="cancelDrawing">
+                        取消
+                    </button>
+                    <button 
+                        class="drawing-modal-footer-btn confirm" 
+                        @click="confirmDrawing" 
+                        :disabled="isConfirming"
+                        style="position: relative;"
+                    >
+                        {{ isConfirming ? '处理中...' : '确定' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // 响应式数据
+                const conversations = ref([]);
+                const currentConversationId = ref(null);
+                const currentConversation = ref(null);
+                const inputMessage = ref('');
+                const isLoading = ref(false);
+                const messagesContainer = ref(null);
+                const inputTextarea = ref(null);
+                const fileInput = ref(null);
+                const isDragOver = ref(false);
+                
+                // 新增的响应式数据
+                const uploadedImageUrl = ref('');
+                const uploadedImageFile = ref(null);
+                
+                // 双图上传相关数据
+                const image1Url = ref('');
+                const image2Url = ref('');
+                
+                // 图像比例选择相关数据
+                const selectedRatio = ref('auto');
+                const ratioOptions = ref([
+                    { value: 'auto', label: 'Auto' },
+                    { value: '1:1', label: '1:1' },
+                    { value: '9:16', label: '9:16' },
+                    { value: '16:9', label: '16:9' },
+                    { value: '3:4', label: '3:4' },
+                    { value: '4:3', label: '4:3' },
+                    { value: '3:2', label: '3:2' },
+                    { value: '2:3', label: '2:3' },
+                    { value: '5:4', label: '5:4' },
+                    { value: '4:5', label: '4:5' }
+                ]);
+                
+                // 绘图弹窗相关的响应式数据
+                const showDrawingModal = ref(false);
+                const modalMode = ref('draw'); // 'draw' 或 'edit'
+                const modalCanvas = ref(null);
+                const canvasContext = ref(null);
+                // 🚨 移除fabricCanvas，使用原生Canvas
+                
+                // 原生Canvas绘图状态
+                const isDrawing = ref(false);
+                const lastX = ref(0);
+                const lastY = ref(0);
+                const drawingPaths = ref([]); // 存储绘图路径用于撤销
+                const backgroundImage = ref(null); // 背景图片
+                const drawingColor = ref('#000000');
+                const brushSize = ref(5);
+                const brushOpacity = ref(1);
+                const drawingMode = ref('brush');
+                const drawingImageUrl = ref('');
+                const canUndo = ref(false);
+                const currentEditingImageUrl = ref('');
+                const isConfirming = ref(false);
+                const canvasWidth = ref(600);  // 默认画布宽度
+                const canvasHeight = ref(400); // 默认画布高度
+                const currentUploadedImageUrl = ref(''); // 当前上传的图片URL
+                
+                // 🎯 新增：遮罩系统
+                const maskCanvas = ref(null); // 遮罩画布
+                const maskContext = ref(null); // 遮罩画布上下文
+                const currentMaskData = ref(''); // 当前遮罩数据（Base64）
+
+                // API基础URL
+                const API_BASE = 'http://localhost:8000';
+
+                // 获取对话列表
+                const loadConversations = async () => {
+                    try {
+                        const response = await axios.get(`${API_BASE}/api/conversations`);
+                        conversations.value = response.data;
+                    } catch (error) {
+                        console.error('加载对话列表失败:', error);
+                    }
+                };
+
+                // 加载特定对话
+                const loadConversation = async (conversationId) => {
+                    try {
+                        currentConversationId.value = conversationId;
+                        const response = await axios.get(`${API_BASE}/api/conversations/${conversationId}`);
+                        currentConversation.value = response.data;
+                        
+                        // 滚动到底部
+                        await nextTick();
+                        scrollToBottom();
+                    } catch (error) {
+                        console.error('加载对话失败:', error);
+                    }
+                };
+
+                // 创建新对话
+                const createNewConversation = async () => {
+                    try {
+                        const response = await axios.post(`${API_BASE}/api/conversations`);
+                        const conversationId = response.data.conversation_id;
+                        
+                        // 重新加载对话列表
+                        await loadConversations();
+                        
+                        // 切换到新对话
+                        currentConversationId.value = conversationId;
+                        currentConversation.value = {
+                            id: conversationId,
+                            title: `新对话 ${conversationId}`,
+                            messages: [],
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+                    } catch (error) {
+                        console.error('创建新对话失败:', error);
+                    }
+                };
+
+                // 删除对话
+                const deleteConversation = async (conversationId) => {
+                    if (!confirm('确定要删除这个对话吗？')) return;
+                    
+                    try {
+                        await axios.delete(`${API_BASE}/api/conversations/${conversationId}`);
+                        
+                        // 从列表中移除
+                        conversations.value = conversations.value.filter(conv => conv.id !== conversationId);
+                        
+                        // 如果删除的是当前对话，清空当前对话
+                        if (currentConversationId.value === conversationId) {
+                            currentConversationId.value = null;
+                            currentConversation.value = null;
+                        }
+                    } catch (error) {
+                        console.error('删除对话失败:', error);
+                        alert('删除对话失败，请稍后重试');
+                    }
+                };
+
+                // 图像上传处理 - 智能判断图1或图2
+                const handleImageUpload = async (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    // 检查文件类型
+                    if (!file.type.startsWith('image/')) {
+                        alert('请选择图像文件');
+                        return;
+                    }
+                    
+                    // 检查文件大小 (10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('文件大小不能超过10MB');
+                        return;
+                    }
+                    
+                    try {
+                        // 创建FormData
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        // 上传文件
+                        const response = await axios.post(`${API_BASE}/api/upload-image`, formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                        
+                        if (response.data.success) {
+                            const uploadedUrl = `${API_BASE}${response.data.file_url}`;
+                            // 记录当前上传的图片，供绘图弹窗载入
+                            currentUploadedImageUrl.value = uploadedUrl;
+                            
+                            // 智能判断：如果没有图1，设置为图1；如果有图1但没有图2，设置为图2
+                            if (!image1Url.value) {
+                                // 第一张图片 - 设置为图1
+                                image1Url.value = uploadedUrl;
+                                console.log('图1上传成功:', image1Url.value);
+                                
+                                // 清除原有的单图模式数据
+                                if (uploadedImageUrl.value) {
+                                    uploadedImageUrl.value = '';
+                                    uploadedImageFile.value = null;
+                                }
+                            } else if (!image2Url.value) {
+                                // 第二张图片 - 设置为图2
+                                image2Url.value = uploadedUrl;
+                                console.log('图2上传成功:', image2Url.value);
+                            } else {
+                                // 已经有两张图片，询问用户要替换哪张
+                                const replaceChoice = confirm('已有两张图片，是否替换图1？点击"确定"替换图1，点击"取消"替换图2');
+                                if (replaceChoice) {
+                                    image1Url.value = uploadedUrl;
+                                    console.log('图1已替换:', image1Url.value);
+                                } else {
+                                    image2Url.value = uploadedUrl;
+                                    console.log('图2已替换:', image2Url.value);
+                                }
+                            }
+                            
+                            // 重置文件输入
+                            if (fileInput.value) {
+                                fileInput.value.value = '';
+                            }
+                        } else {
+                            alert('图像上传失败');
+                        }
+                    } catch (error) {
+                        console.error('图像上传失败:', error);
+                        alert('图像上传失败：' + (error.response?.data?.detail || error.message));
+                    }
+                };
+
+                // 清除上传的图像
+                const clearUploadedImage = () => {
+                    uploadedImageUrl.value = '';
+                    currentUploadedImageUrl.value = ''; // 清除当前上传的图片记录
+                    uploadedImageFile.value = null;
+                    if (fileInput.value) {
+                        fileInput.value.value = '';
+                    }
+                };
+
+
+                // 清除图1
+                const clearImage1 = () => {
+                    image1Url.value = '';
+                };
+
+                // 清除图2
+                const clearImage2 = () => {
+                    image2Url.value = '';
+                };
+                
+                // 选择图像比例
+                const selectRatio = (ratio) => {
+                    selectedRatio.value = ratio;
+                    console.log('选择图像比例:', ratio);
+                };
+
+                // 拖拽上传处理
+                const handleDragEnter = (e) => {
+                    e.preventDefault();
+                    isDragOver.value = true;
+                };
+
+                const handleDragOver = (e) => {
+                    e.preventDefault();
+                };
+
+                const handleDragLeave = (e) => {
+                    e.preventDefault();
+                    // 检查是否真的离开了拖拽区域
+                    if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+                        isDragOver.value = false;
+                    }
+                };
+
+                const handleDrop = async (e) => {
+                    e.preventDefault();
+                    isDragOver.value = false;
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const file = files[0];
+                        if (file.type.startsWith('image/')) {
+                            await handleImageUpload({ target: { files: [file] } });
+                        } else {
+                            alert('请拖拽图片文件');
+                        }
+                    }
+                };
+
+                // 获取输入提示文本
+                const getInputPlaceholder = () => {
+                    if (uploadedImageUrl.value || drawingImageUrl.value) {
+                        return '输入编辑指令... (例如：把这个图像变成卡通风格)';
+                    }
+                    return '输入消息... (支持文本对话和图像生成，可上传图像或绘图)';
+                };
+
+                // 检查是否可以发送消息
+                const canSendMessage = () => {
+                    if (isLoading.value) return false;
+                    if (!inputMessage.value.trim()) return false;
+                    return true;
+                };
+
+                // 发送消息
+                const sendMessage = async () => {
+                    if (!canSendMessage()) return;
+                    
+                    const message = inputMessage.value.trim();
+                    
+                    // 优先使用双图模式，然后是单图模式
+                    let currentImageUrl = '';
+                    let hasDualImages = image1Url.value && image2Url.value;
+                    let currentModelType = 'generate';
+                    
+                    if (hasDualImages) {
+                        // 双图模式 - 使用现有的edit API，但传递额外的图片信息
+                        currentImageUrl = image1Url.value; // 主图片
+                        currentModelType = 'edit';
+                    } else if (image1Url.value) {
+                        // 只有图1
+                        currentImageUrl = image1Url.value;
+                        currentModelType = 'edit';
+                    } else if (uploadedImageUrl.value || drawingImageUrl.value) {
+                        // 原有的单图模式
+                        currentImageUrl = uploadedImageUrl.value || drawingImageUrl.value;
+                        currentModelType = 'edit';
+                    }
+                    
+                    // 🎯 调试信息
+                    console.log('🔍 发送消息调试信息:');
+                    console.log('  - image1Url:', image1Url.value);
+                    console.log('  - image2Url:', image2Url.value);
+                    console.log('  - hasDualImages:', hasDualImages);
+                    console.log('  - uploadedImageUrl:', uploadedImageUrl.value);
+                    console.log('  - drawingImageUrl:', drawingImageUrl.value);
+                    console.log('  - currentImageUrl:', currentImageUrl);
+                    console.log('  - currentModelType:', currentModelType);
+                    console.log('  - currentMaskData:', currentMaskData.value ? currentMaskData.value.substring(0, 50) + '...' : 'null');
+                    
+                    // 清空输入
+                    inputMessage.value = '';
+                    
+                    // 如果有绘图，发送完成后清空（但要在处理完遮罩后）
+                    const shouldClearDrawing = Boolean(drawingImageUrl.value);
+                    const tempMaskData = currentMaskData.value; // 保存遮罩数据
+                    
+                    // 如果没有当前对话，创建一个
+                    if (!currentConversation.value) {
+                        await createNewConversation();
+                    }
+                    
+                    // 添加用户消息到界面
+                    const userMessage = {
+                        role: 'user',
+                        content: message,
+                        input_image_url: currentImageUrl,
+                        model_type: currentModelType,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // 🎭 如果使用了图1或双图模式，都标记为双图模式以便正确显示
+                    if (image1Url.value) {
+                        userMessage.is_dual_image = true;  // 标记为双图模式（包括单图）
+                        if (hasDualImages) {
+                            userMessage.image2_url = image2Url.value;  // 只有双图时才添加第二张图片URL
+                        }
+                    }
+                    
+                    currentConversation.value.messages.push(userMessage);
+                    
+                    // 清空图片（在添加消息到对话历史后）
+                    if (hasDualImages) {
+                        clearImage1();
+                        clearImage2();
+                    } else if (image1Url.value) {
+                        clearImage1();
+                    } else if (uploadedImageUrl.value) {
+                        clearUploadedImage();
+                    }
+                    
+                    // 滚动到底部
+                    await nextTick();
+                    scrollToBottom();
+                    
+                    // 设置加载状态
+                    isLoading.value = true;
+                    
+                    try {
+                        // 🎯 准备请求数据
+                        const requestData = {
+                            message: message,
+                            conversation_id: currentConversationId.value,
+                            input_image_url: currentImageUrl,
+                            model_type: currentModelType,
+                            aspect_ratio: selectedRatio.value
+                        };
+                        
+                        // 🎯 如果是双图模式，添加第二张图片信息
+                        if (hasDualImages) {
+                            // 在prompt中添加双图处理指令，明确告知图1和图2
+                            requestData.message = `双图处理：请根据图1和图2的内容以及用户要求进行处理。${message}。图2链接：${image2Url.value}`;
+                            console.log('🎭 双图模式：图1和图2');
+                            console.log('🎭 图1:', image1Url.value);
+                            console.log('🎭 图2:', image2Url.value);
+                        } else if (image1Url.value) {
+                            // 单图模式
+                            console.log('🎭 单图模式：图1');
+                            console.log('🎭 图1:', image1Url.value);
+                        }
+                        
+                        // 🎯 如果是编辑模式且有遮罩数据，添加遮罩信息
+                        const effectiveMaskData = currentMaskData.value || tempMaskData;
+                        if (currentModelType === 'edit' && effectiveMaskData) {
+                            requestData.mask_image_url = effectiveMaskData;
+                            console.log('🎯 已添加遮罩数据到请求中，遮罩数据长度:', effectiveMaskData.length);
+                            console.log('🎯 遮罩数据预览:', effectiveMaskData.substring(0, 100) + '...');
+                        } else if (currentModelType === 'edit') {
+                            console.log('🎯 编辑模式但无遮罩数据，将进行全图编辑');
+                            console.log('🎯 currentMaskData.value:', currentMaskData.value);
+                            console.log('🎯 tempMaskData:', tempMaskData ? tempMaskData.substring(0, 50) + '...' : 'null');
+                        }
+                        
+                        const response = await axios.post(`${API_BASE}/api/chat`, requestData);
+                        
+                        // 添加AI回复到界面
+                        const aiMessage = {
+                            role: 'assistant',
+                            content: response.data.message,
+                            image_url: response.data.image_url,
+                            image_resolution: response.data.image_resolution,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        currentConversation.value.messages.push(aiMessage);
+                        
+                        // 更新对话标题（如果是第一条消息）
+                        if (currentConversation.value.messages.length === 2) {
+                            currentConversation.value.title = message.length > 20 ? 
+                                message.substring(0, 20) + '...' : message;
+                        }
+                        
+                        // 重新加载对话列表以更新侧边栏
+                        await loadConversations();
+                        
+                        // 🎯 请求成功后清空绘图数据
+                        if (shouldClearDrawing) {
+                            clearDrawingImage();
+                        }
+                        
+                        // 滚动到底部
+                        await nextTick();
+                        scrollToBottom();
+                        
+                    } catch (error) {
+                        console.error('发送消息失败:', error);
+                        
+                        // 添加错误消息
+                        const errorMessage = {
+                            role: 'assistant',
+                            content: '抱歉，处理您的请求时出现了错误，请稍后重试。',
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        currentConversation.value.messages.push(errorMessage);
+                        
+                        await nextTick();
+                        scrollToBottom();
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                // 滚动到底部
+                const scrollToBottom = () => {
+                    if (messagesContainer.value) {
+                        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+                    }
+                };
+
+                // 自动调整文本框高度
+                const adjustTextareaHeight = () => {
+                    const textarea = inputTextarea.value;
+                    if (textarea) {
+                        textarea.style.height = 'auto';
+                        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+                    }
+                };
+
+                // 打开图像
+                const openImage = (imageUrl) => {
+                    window.open(imageUrl, '_blank');
+                };
+
+                // 下载图像
+                const downloadImage = async (imageUrl) => {
+                    try {
+                        // 从URL中提取文件名，或使用默认名称
+                        const urlParts = imageUrl.split('/');
+                        let filename = urlParts[urlParts.length - 1] || 'nano-banana-image.png';
+                        
+                        // 确保文件名有正确的扩展名
+                        if (!filename.includes('.')) {
+                            filename += '.png';
+                        }
+                        
+                        // 首先尝试使用后端代理下载
+                        try {
+                            const proxyUrl = `${API_BASE}/api/download-image?image_url=${encodeURIComponent(imageUrl)}`;
+                            const link = document.createElement('a');
+                            link.href = proxyUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            setTimeout(() => {
+                                document.body.removeChild(link);
+                            }, 100);
+                            
+                            return; // 成功，直接返回
+                            
+                        } catch (proxyError) {
+                            console.warn('代理下载失败，尝试直接下载:', proxyError);
+                        }
+                        
+                        // 如果代理失败，尝试直接fetch下载
+                        try {
+                            const response = await fetch(imageUrl, {
+                                mode: 'cors',
+                                credentials: 'omit'
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            
+                            const blob = await response.blob();
+                            
+                            // 创建下载链接
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            // 触发下载
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            // 清理
+                            setTimeout(() => {
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                            }, 100);
+                            
+                        } catch (fetchError) {
+                            // 最后尝试直接链接下载
+                            console.warn('Fetch下载失败，尝试直接链接:', fetchError);
+                            const link = document.createElement('a');
+                            link.href = imageUrl;
+                            link.download = filename;
+                            link.target = '_blank';
+                            link.style.display = 'none';
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            setTimeout(() => {
+                                document.body.removeChild(link);
+                            }, 100);
+                        }
+                        
+                    } catch (error) {
+                        console.error('下载图像失败:', error);
+                        alert('下载失败，正在尝试在新窗口打开图像...');
+                        // 作为最后的备选方案，在新窗口打开图像
+                        window.open(imageUrl, '_blank');
+                    }
+                };
+
+                // 格式化时间
+                const formatTime = (timestamp) => {
+                    if (!timestamp) return '';
+                    
+                    const date = new Date(timestamp);
+                    const now = new Date();
+                    const diff = now - date;
+                    
+                    if (diff < 60000) { // 1分钟内
+                        return '刚刚';
+                    } else if (diff < 3600000) { // 1小时内
+                        return Math.floor(diff / 60000) + '分钟前';
+                    } else if (diff < 86400000) { // 24小时内
+                        return Math.floor(diff / 3600000) + '小时前';
+                    } else {
+                        return date.toLocaleDateString();
+                    }
+                };
+
+                // 🚨 所有Fabric.js导出函数已禁用
+                /*
+                const exportTaintedCanvas = async (canvas) => {
+                    try {
+                        console.log('🔄 开始重绘Canvas以避免污染...');
+                        
+                        // 创建新的干净Canvas
+                        const cleanCanvas = document.createElement('canvas');
+                        const cleanCtx = cleanCanvas.getContext('2d');
+                        
+                        cleanCanvas.width = fabricCanvas.width;
+                        cleanCanvas.height = fabricCanvas.height;
+                        
+                        console.log('📐 重绘Canvas尺寸设置为:', cleanCanvas.width, 'x', cleanCanvas.height);
+                        
+                        // 设置白色背景
+                        cleanCtx.fillStyle = 'white';
+                        cleanCtx.fillRect(0, 0, cleanCanvas.width, cleanCanvas.height);
+                        
+                        // 获取所有Fabric对象
+                        const objects = fabricCanvas.getObjects();
+                        console.log('📦 找到', objects.length, '个对象需要重绘');
+                        
+                        // 逐个重绘对象
+                        for (let i = 0; i < objects.length; i++) {
+                            const obj = objects[i];
+                            console.log('🎨 重绘对象', i + 1, ':', obj.type);
+                            
+                            if (obj.type === 'image') {
+                                // 重绘图片对象
+                                await redrawImageObject(cleanCtx, obj);
+                            } else if (obj.type === 'path') {
+                                // 重绘路径对象（用户绘制的线条）
+                                redrawPathObject(cleanCtx, obj);
+                            }
+                        }
+                        
+                        // 导出干净的Canvas
+                        const cleanImageData = cleanCanvas.toDataURL('image/png', 1.0);
+                        console.log('✅ 干净Canvas导出成功');
+                        
+                        return cleanImageData;
+                        
+                    } catch (error) {
+                        console.error('❌ 重绘Canvas失败:', error);
+                        throw new Error('Canvas重绘失败: ' + error.message);
+                    }
+                };
+
+                // 重绘图片对象到干净Canvas
+                const redrawImageObject = (ctx, imageObj) => {
+                    return new Promise((resolve, reject) => {
+                        try {
+                            // 获取图片的原始URL
+                            const imageSrc = imageObj._originalElement ? imageObj._originalElement.src : imageObj.getSrc();
+                            console.log('🖼️ 重绘图片:', imageSrc);
+                            
+                            // 先尝试从Fabric对象中获取像素数据
+                            try {
+                                // 创建临时canvas来获取图片数据
+                                const tempCanvas = document.createElement('canvas');
+                                const tempCtx = tempCanvas.getContext('2d');
+                                
+                                tempCanvas.width = imageObj.width * imageObj.scaleX;
+                                tempCanvas.height = imageObj.height * imageObj.scaleY;
+                                
+                                // 尝试直接从Fabric对象获取图片元素
+                                const imgElement = imageObj.getElement();
+                                if (imgElement) {
+                                    tempCtx.drawImage(imgElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                                    
+                                    // 应用变换矩阵到目标Canvas
+                                    ctx.save();
+                                    const matrix = imageObj.calcTransformMatrix();
+                                    ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+                                    
+                                    // 绘制到目标Canvas
+                                    ctx.drawImage(tempCanvas, -imageObj.width/2, -imageObj.height/2, imageObj.width, imageObj.height);
+                                    
+                                    ctx.restore();
+                                    resolve();
+                                    return;
+                                }
+                            } catch (fabricError) {
+                                console.warn('⚠️ 从Fabric对象获取图片失败:', fabricError);
+                            }
+                            
+                            // 备用方案：重新加载图片
+                            const img = new Image();
+                            img.onload = () => {
+                                try {
+                                    // 应用变换矩阵
+                                    ctx.save();
+                                    
+                                    const matrix = imageObj.calcTransformMatrix();
+                                    ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+                                    
+                                    // 绘制图片
+                                    ctx.drawImage(img, -imageObj.width/2, -imageObj.height/2, imageObj.width, imageObj.height);
+                                    
+                                    ctx.restore();
+                                    resolve();
+                                } catch (drawError) {
+                                    console.warn('⚠️ 图片绘制失败:', drawError);
+                                    resolve();
+                                }
+                            };
+                            
+                            img.onerror = () => {
+                                console.warn('⚠️ 图片重新加载失败，跳过该图片');
+                                resolve();
+                            };
+                            
+                            // 使用原始图片URL，不设置crossOrigin
+                            img.src = imageSrc;
+                            
+                        } catch (error) {
+                            console.warn('⚠️ 图片对象重绘出错:', error);
+                            resolve();
+                        }
+                    });
+                };
+
+                // 重绘路径对象到干净Canvas
+                const redrawPathObject = (ctx, pathObj) => {
+                    try {
+                        ctx.save();
+                        
+                        // 设置路径样式
+                        ctx.strokeStyle = pathObj.stroke || '#000000';
+                        ctx.lineWidth = pathObj.strokeWidth || 1;
+                        ctx.lineCap = pathObj.strokeLineCap || 'round';
+                        ctx.lineJoin = pathObj.strokeLineJoin || 'round';
+                        ctx.globalAlpha = pathObj.opacity || 1;
+                        
+                        // 应用变换
+                        const matrix = pathObj.calcTransformMatrix();
+                        ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+                        
+                        // 绘制路径
+                        const path = pathObj.path;
+                        if (path && path.length > 0) {
+                            ctx.beginPath();
+                            
+                            for (let i = 0; i < path.length; i++) {
+                                const point = path[i];
+                                if (point[0] === 'M') {
+                                    ctx.moveTo(point[1], point[2]);
+                                } else if (point[0] === 'L') {
+                                    ctx.lineTo(point[1], point[2]);
+                                } else if (point[0] === 'Q') {
+                                    ctx.quadraticCurveTo(point[1], point[2], point[3], point[4]);
+                                } else if (point[0] === 'C') {
+                                    ctx.bezierCurveTo(point[1], point[2], point[3], point[4], point[5], point[6]);
+                                }
+                            }
+                            
+                            ctx.stroke();
+                        }
+                        
+                        ctx.restore();
+                        
+                    } catch (error) {
+                        console.warn('⚠️ 路径对象重绘出错:', error);
+                    }
+                };
+
+                // 服务器端图片合成备用方案
+                const serverSideImageMerge = async () => {
+                    try {
+                        console.log('📤 发送绘图数据到服务器进行合成...');
+                        
+                        // 收集画布上的所有数据
+                        const canvasData = {
+                            width: fabricCanvas.value.width,
+                            height: fabricCanvas.value.height,
+                            backgroundImage: currentEditingImageUrl.value,
+                            paths: []
+                        };
+                        
+                        // 收集所有绘制路径
+                        const objects = fabricCanvas.value.getObjects();
+                        for (const obj of objects) {
+                            if (obj.type === 'path') {
+                                canvasData.paths.push({
+                                    path: obj.path,
+                                    stroke: obj.stroke,
+                                    strokeWidth: obj.strokeWidth,
+                                    transform: obj.calcTransformMatrix()
+                                });
+                            }
+                        }
+                        
+                        console.log('📦 发送数据:', canvasData);
+                        
+                        // 发送到服务器
+                        const response = await axios.post(`${API_BASE}/api/merge-canvas`, canvasData);
+                        
+                        if (response.data.success) {
+                            return response.data.imageData; // 服务器返回Base64数据
+                        } else {
+                            throw new Error('服务器合成失败: ' + response.data.error);
+                        }
+                        
+                    } catch (error) {
+                        console.error('服务器端合成失败:', error);
+                        throw error;
+                    }
+                };
+                */
+
+                // 测试图片是否可访问
+                const testImageAccess = (imageUrl) => {
+                    return new Promise((resolve, reject) => {
+                        const testImg = new Image();
+                        
+                        // 🔧 设置跨域属性和代理
+                        if (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1') || imageUrl.startsWith('/uploads/')) {
+                            // 本地服务器不需要跨域
+                            console.log('🔍 本地图片，不设置crossOrigin');
+                        } else {
+                            // 外部图片：使用服务器代理来避免CORS问题
+                            console.log('🔍 外部图片，使用服务器代理避免CORS');
+                            const proxyUrl = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+                            console.log('🔄 代理URL:', proxyUrl);
+                            imageUrl = proxyUrl; // 使用代理URL
+                        }
+                        
+                        testImg.onload = () => {
+                            console.log('✅ 图片可访问性测试通过:', imageUrl);
+                            resolve(true);
+                        };
+                        testImg.onerror = (error) => {
+                            console.error('❌ 图片可访问性测试失败:', imageUrl, error);
+                            console.error('❌ 错误类型:', error.type);
+                            console.error('❌ 错误目标:', error.target?.src);
+                            reject(new Error(`图片无法访问: ${imageUrl}`));
+                        };
+                        
+                        console.log('🔍 开始测试图片访问:', imageUrl);
+                        testImg.src = imageUrl;
+                    });
+                };
+
+                // 🎨 智能图片加载（优化本地图片处理）
+                const loadImageWithProxy = async (imageUrl, onSuccess, onError) => {
+                    try {
+                        console.log('🔄 智能加载图片:', imageUrl);
+                        
+                        // 🔧 优化：对于本地localhost图片，尝试直接加载
+                        if (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1')) {
+                            console.log('🏠 检测到本地图片，尝试直接加载');
+                            
+                            const img = new Image();
+                            img.onload = () => {
+                                console.log('✅ 本地图片直接加载成功');
+                                console.log('📐 图片尺寸:', img.width, 'x', img.height);
+                                onSuccess(img);
+                            };
+                            img.onerror = async (error) => {
+                                console.warn('⚠️ 本地图片直接加载失败，尝试服务器清理:', error);
+                                // 降级到服务器清理方案
+                                await fallbackToServerClean(imageUrl, onSuccess, onError);
+                            };
+                            img.src = imageUrl;
+                            return;
+                        }
+                        
+                        // 对于外部图片，使用服务器清理
+                        await fallbackToServerClean(imageUrl, onSuccess, onError);
+                        
+                    } catch (error) {
+                        console.error('❌ 图片加载过程出错:', error);
+                        onError('图片加载过程出错: ' + error.message);
+                    }
+                };
+
+                // 🎨 备用服务器清理方案
+                const fallbackToServerClean = async (imageUrl, onSuccess, onError) => {
+                    try {
+                        console.log('🧹 使用服务器清理方案:', imageUrl);
+                        
+                        const cleanImageData = await getCleanImageData(imageUrl);
+                        
+                        if (cleanImageData) {
+                            const img = new Image();
+                            img.onload = () => {
+                                console.log('✅ 服务器清理图片加载成功');
+                                console.log('📐 图片尺寸:', img.width, 'x', img.height);
+                                onSuccess(img);
+                            };
+                            img.onerror = (error) => {
+                                console.error('❌ 服务器清理图片加载失败:', error);
+                                onError('服务器清理图片加载失败');
+                            };
+                            img.src = cleanImageData;
+                        } else {
+                            console.error('❌ 无法获取干净的图片数据');
+                            onError('无法获取干净的图片数据');
+                        }
+                    } catch (error) {
+                        console.error('❌ 服务器清理失败:', error);
+                        onError('服务器清理失败: ' + error.message);
+                    }
+                };
+
+                // 🎨 获取干净的图片数据（避免Canvas污染）
+                const getCleanImageData = async (imageUrl) => {
+                    try {
+                        console.log('🧹 请求服务器清理图片:', imageUrl);
+                        
+                        const response = await axios.post(`${API_BASE}/api/clean-image`, {
+                            imageUrl: imageUrl
+                        });
+                        
+                        if (response.data.success) {
+                            console.log('✅ 服务器图片清理成功');
+                            return response.data.imageData;
+                        } else {
+                            console.error('❌ 服务器图片清理失败:', response.data.error);
+                            return null;
+                        }
+                    } catch (error) {
+                        console.error('❌ 服务器图片清理请求失败:', error);
+                        return null;
+                    }
+                };
+
+                // 🎨 创建简单遮罩（备用方案）
+                const createSimpleMask = async () => {
+                    try {
+                        console.log('🎯 创建简单遮罩作为备用方案');
+                        
+                        // 创建临时画布
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvasWidth.value;
+                        tempCanvas.height = canvasHeight.value;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        
+                        // 黑色背景
+                        tempCtx.fillStyle = '#000000';
+                        tempCtx.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                        
+                        // 基于绘图路径创建白色遮罩
+                        tempCtx.strokeStyle = '#FFFFFF';
+                        tempCtx.globalAlpha = 1.0;
+                        tempCtx.lineCap = 'round';
+                        tempCtx.lineJoin = 'round';
+                        
+                        drawingPaths.value.forEach(path => {
+                            if (path.mode !== 'eraser' && path.points && path.points.length > 1) {
+                                tempCtx.lineWidth = path.size;
+                                tempCtx.beginPath();
+                                tempCtx.moveTo(path.points[0].x, path.points[0].y);
+                                
+                                for (let i = 1; i < path.points.length; i++) {
+                                    tempCtx.lineTo(path.points[i].x, path.points[i].y);
+                                }
+                                
+                                tempCtx.stroke();
+                            }
+                        });
+                        
+                        const maskDataUrl = tempCanvas.toDataURL('image/png', 1.0);
+                        console.log('✅ 简单遮罩创建成功');
+                        return maskDataUrl;
+                        
+                    } catch (error) {
+                        console.error('❌ 创建简单遮罩失败:', error);
+                        return null;
+                    }
+                };
+
+                // 🎨 服务器端Canvas导出（用于解决污染问题）
+                const serverSideCanvasExport = async () => {
+                    try {
+                        console.log('🔄 使用服务器端Canvas合成...');
+                        
+                        // 收集画布数据
+                        const canvasData = {
+                            width: canvasWidth.value,
+                            height: canvasHeight.value,
+                            backgroundImageUrl: currentEditingImageUrl.value,
+                            paths: drawingPaths.value.map(path => ({
+                                mode: path.mode,
+                                color: path.color,
+                                size: path.size,
+                                opacity: path.opacity,
+                                points: path.points
+                            }))
+                        };
+                        
+                        console.log('📦 发送Canvas数据到服务器:', canvasData);
+                        
+                        // 发送到服务器进行合成
+                        const response = await axios.post(`${API_BASE}/api/merge-canvas`, canvasData);
+                        
+                        if (response.data.success) {
+                            console.log('✅ 服务器端Canvas合成成功');
+                            return response.data.imageData;
+                        } else {
+                            console.error('❌ 服务器端Canvas合成失败:', response.data.error);
+                            return null;
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ 服务器端Canvas合成异常:', error);
+                        return null;
+                    }
+                };
+
+                // 绘图弹窗方法
+                const openDrawingModal = () => {
+                    console.log('🎨 打开绘图弹窗');
+                    
+                    // 依次尝试：当前上传图 > 单图上传(兼容老逻辑) > 图1
+                    const candidateUrl = currentUploadedImageUrl.value || uploadedImageUrl.value || image1Url.value || '';
+                    if (candidateUrl) {
+                        console.log('📷 载入待编辑图片到画布:', candidateUrl);
+                        modalMode.value = 'edit';
+                        currentEditingImageUrl.value = candidateUrl;
+                        showDrawingModal.value = true;
+                        
+                        setTimeout(() => {
+                            console.log('🎨 初始化原生Canvas（编辑模式）');
+                            initNativeCanvas(candidateUrl);
+                        }, 100);
+                    } else {
+                        console.log('📝 没有可编辑图片，创建空白画布');
+                        modalMode.value = 'draw';
+                        currentEditingImageUrl.value = '';
+                        showDrawingModal.value = true;
+                        
+                        setTimeout(() => {
+                            console.log('🎨 初始化原生Canvas（空白模式）');
+                            initNativeCanvas();
+                        }, 100);
+                    }
+                };
+
+                const openImageEditModal = (imageUrl) => {
+                    try {
+                        console.log('🖌️ 打开图片编辑弹窗');
+                        console.log('📷 原始图片URL:', imageUrl);
+                        console.log('🔗 URL类型:', typeof imageUrl);
+                        console.log('📏 URL长度:', imageUrl ? imageUrl.length : 'undefined');
+                        
+                        // 🔧 调试：检查所有必要的变量是否定义
+                        console.log('🔍 调试检查:');
+                        console.log('  - API_BASE:', typeof API_BASE, API_BASE);
+                        console.log('  - modalCanvas:', typeof modalCanvas, modalCanvas?.value);
+                        console.log('  - canvasContext:', typeof canvasContext, canvasContext?.value);
+                        console.log('  - showDrawingModal:', typeof showDrawingModal, showDrawingModal?.value);
+                    
+                    // 检查URL是否有效
+                    if (!imageUrl || imageUrl.trim() === '') {
+                        console.error('❌ 图片URL为空或无效');
+                        alert('图片URL无效，无法编辑');
+                        return;
+                    }
+                    
+                    // 如果是相对路径，转换为完整URL
+                    let fullImageUrl = imageUrl;
+                    if (imageUrl.startsWith('/')) {
+                        fullImageUrl = `${API_BASE}${imageUrl}`;
+                        console.log('🔄 转换为完整URL:', fullImageUrl);
+                        console.log('🔍 使用API_BASE:', API_BASE);
+                    }
+                    
+                    modalMode.value = 'edit';
+                    currentEditingImageUrl.value = fullImageUrl;
+                    showDrawingModal.value = true;
+                    
+                    // 使用setTimeout确保DOM完全渲染
+                    setTimeout(async () => {
+                        console.log('⚙️ 开始初始化原生Canvas，使用URL:', fullImageUrl);
+                        
+                        // 🔧 在浏览器中直接测试URL是否可访问
+                        console.log('🧪 测试：请在新标签页中打开这个URL:', fullImageUrl);
+                        console.log('🧪 如果URL无法打开，说明服务器配置有问题');
+                        
+                        // 🔧 简化测试：直接尝试加载图片，不做预检查
+                        console.log('🚀 直接开始初始化Canvas');
+                        try {
+                            initNativeCanvas(fullImageUrl);
+                        } catch (error) {
+                            console.error('❌ Canvas初始化失败:', error);
+                            
+                            // 尝试不同的URL格式
+                            console.log('🔄 尝试其他URL格式...');
+                            
+                            const alternativeUrls = [
+                                imageUrl, // 原始URL
+                                `${API_BASE}${imageUrl}`, // 添加API_BASE前缀
+                                imageUrl.replace('/uploads/', `${API_BASE}/uploads/`), // 替换uploads路径
+                                `http://localhost:8000${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}` // 明确的localhost URL
+                            ];
+                            
+                            let success = false;
+                            for (const altUrl of alternativeUrls) {
+                                try {
+                                    console.log('🧪 测试URL:', altUrl);
+                                    await testImageAccess(altUrl);
+                                    console.log('✅ 找到可用的URL:', altUrl);
+                                    initNativeCanvas(altUrl);
+                                    success = true;
+                                    break;
+                                } catch (altError) {
+                                    console.log('❌ URL不可用:', altUrl);
+                                }
+                            }
+                            
+                            if (!success) {
+                                alert('图片加载失败，请检查图片是否存在');
+                                closeDrawingModal();
+                            }
+                        }
+                    }, 100);
+                    } catch (error) {
+                        console.error('❌ openImageEditModal 函数执行出错:', error);
+                        console.error('❌ 错误堆栈:', error.stack);
+                        alert('打开图片编辑失败: ' + error.message);
+                    }
+                };
+
+                // 🎨 关闭绘图弹窗
+                const closeDrawingModal = () => {
+                    showDrawingModal.value = false;
+                    
+                    // 清理原生Canvas资源
+                    if (canvasContext.value) {
+                        canvasContext.value = null;
+                    }
+                    
+                    // 🎯 清理遮罩画布资源
+                    if (maskContext.value) {
+                        maskContext.value = null;
+                    }
+                    
+                    // 重置绘图状态
+                    isDrawing.value = false;
+                    drawingPaths.value = [];
+                    backgroundImage.value = null;
+                    
+                    console.log('🎨 绘图弹窗已关闭，资源已清理');
+                };
+
+                // 🎨 原生Canvas初始化函数
+                const initNativeCanvas = (backgroundImageUrl = null) => {
+                    console.log('🎨 原生Canvas初始化，modalCanvas.value:', modalCanvas.value);
+                    
+                    if (!modalCanvas.value) {
+                        console.error('❌ modalCanvas.value 为空，无法初始化');
+                        return;
+                    }
+                    
+                    // 获取Canvas上下文
+                    canvasContext.value = modalCanvas.value.getContext('2d');
+                    
+                    if (backgroundImageUrl) {
+                        console.log('🖼️ 正在加载背景图片:', backgroundImageUrl);
+                        
+                        loadImageWithProxy(backgroundImageUrl, (img) => {
+                            console.log('✅ 背景图片加载成功，原始尺寸:', img.width, 'x', img.height);
+                            
+                            canvasWidth.value = img.width;
+                            canvasHeight.value = img.height;
+                            backgroundImage.value = img;
+                            
+                            console.log('📐 画布尺寸设置为:', canvasWidth.value, 'x', canvasHeight.value);
+                            
+                            nextTick(() => {
+                                setupNativeCanvas();
+                            });
+                        }, (error) => {
+                            console.error('❌ 背景图片加载失败:', error);
+                            alert('图片加载失败：' + error);
+                            // 使用默认尺寸创建画布
+                            canvasWidth.value = 600;
+                            canvasHeight.value = 400;
+                            backgroundImage.value = null;
+                            nextTick(() => {
+                                setupNativeCanvas();
+                            });
+                        });
+                    } else {
+                        // 没有背景图片，使用默认尺寸
+                        console.log('📐 使用默认画布尺寸');
+                        canvasWidth.value = 600;
+                        canvasHeight.value = 400;
+                        backgroundImage.value = null;
+                        nextTick(() => {
+                            setupNativeCanvas();
+                        });
+                    }
+                };
+
+                // 🎨 设置原生Canvas
+                const setupNativeCanvas = () => {
+                    console.log('🔧 设置原生Canvas');
+                    
+                    if (!modalCanvas.value || !canvasContext.value) {
+                        console.error('❌ Canvas或上下文未准备就绪');
+                        return;
+                    }
+                    
+                    // 设置主Canvas尺寸
+                    modalCanvas.value.width = canvasWidth.value;
+                    modalCanvas.value.height = canvasHeight.value;
+                    modalCanvas.value.style.width = canvasWidth.value + 'px';
+                    modalCanvas.value.style.height = canvasHeight.value + 'px';
+                    
+                    // 🎯 设置遮罩Canvas
+                    if (maskCanvas.value) {
+                        maskCanvas.value.width = canvasWidth.value;
+                        maskCanvas.value.height = canvasHeight.value;
+                        maskContext.value = maskCanvas.value.getContext('2d');
+                        
+                        // 初始化遮罩画布为黑色背景（表示不编辑区域）
+                        maskContext.value.fillStyle = '#000000';
+                        maskContext.value.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                        
+                        console.log('🎯 遮罩画布已初始化');
+                    }
+                    
+                    // 清空画布并绘制背景
+                    redrawCanvas();
+                    
+                    // 设置绘图事件监听器
+                    setupDrawingEvents();
+                    
+                    // 重置绘图状态
+                    drawingPaths.value = [];
+                    isDrawing.value = false;
+                    
+                    console.log('✅ 原生Canvas设置完成');
+                };
+
+                // 🎨 重绘Canvas（背景图片 + 所有路径）
+                const redrawCanvas = () => {
+                    if (!canvasContext.value) return;
+                    
+                    const ctx = canvasContext.value;
+                    
+                    // 清空画布
+                    ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
+                    
+                    // 绘制背景图片（如果有）
+                    if (backgroundImage.value) {
+                        ctx.drawImage(backgroundImage.value, 0, 0, canvasWidth.value, canvasHeight.value);
+                    } else {
+                        // 白色背景
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                    }
+                    
+                    // 重绘所有路径
+                    drawingPaths.value.forEach(path => {
+                        drawPath(path);
+                    });
+                };
+
+                // 🎨 绘制单个路径
+                const drawPath = (path) => {
+                    if (!canvasContext.value || !path.points || path.points.length < 2) return;
+                    
+                    const ctx = canvasContext.value;
+                    
+                    // 保存当前状态
+                    ctx.save();
+                    
+                    // 设置绘图属性
+                    if (path.mode === 'eraser') {
+                        ctx.globalCompositeOperation = 'destination-out';
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.strokeStyle = path.color;
+                        ctx.globalAlpha = path.opacity;
+                    }
+                    
+                    ctx.lineWidth = path.size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    // 绘制路径
+                    ctx.beginPath();
+                    ctx.moveTo(path.points[0].x, path.points[0].y);
+                    
+                    for (let i = 1; i < path.points.length; i++) {
+                        ctx.lineTo(path.points[i].x, path.points[i].y);
+                    }
+                    
+                    ctx.stroke();
+                    
+                    // 恢复状态
+                    ctx.restore();
+                };
+
+                // 🎨 设置绘图事件监听器
+                const setupDrawingEvents = () => {
+                    if (!modalCanvas.value) return;
+                    
+                    const canvas = modalCanvas.value;
+                    
+                    // 移除旧的事件监听器
+                    canvas.onmousedown = null;
+                    canvas.onmousemove = null;
+                    canvas.onmouseup = null;
+                    canvas.onmouseleave = null;
+                    
+                    // 鼠标事件
+                    canvas.onmousedown = (e) => startDrawing(e);
+                    canvas.onmousemove = (e) => draw(e);
+                    canvas.onmouseup = () => stopDrawing();
+                    canvas.onmouseleave = () => stopDrawing();
+                    
+                    // 触摸事件（移动端支持）
+                    canvas.ontouchstart = (e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        const mouseEvent = new MouseEvent('mousedown', {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY
+                        });
+                        canvas.dispatchEvent(mouseEvent);
+                    };
+                    
+                    canvas.ontouchmove = (e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        const mouseEvent = new MouseEvent('mousemove', {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY
+                        });
+                        canvas.dispatchEvent(mouseEvent);
+                    };
+                    
+                    canvas.ontouchend = (e) => {
+                        e.preventDefault();
+                        const mouseEvent = new MouseEvent('mouseup', {});
+                        canvas.dispatchEvent(mouseEvent);
+                    };
+                    
+                    console.log('✅ 绘图事件监听器已设置');
+                };
+
+                // 🎨 获取鼠标在Canvas上的精确坐标
+                const getCanvasCoordinates = (e) => {
+                    const rect = modalCanvas.value.getBoundingClientRect();
+                    const scaleX = canvasWidth.value / rect.width;
+                    const scaleY = canvasHeight.value / rect.height;
+                    
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                };
+
+                // 🎨 开始绘图
+                const startDrawing = (e) => {
+                    isDrawing.value = true;
+                    const coords = getCanvasCoordinates(e);
+                    lastX.value = coords.x;
+                    lastY.value = coords.y;
+                    
+                    // 创建新路径
+                    const newPath = {
+                        mode: drawingMode.value,
+                        color: drawingColor.value,
+                        size: brushSize.value,
+                        opacity: brushOpacity.value,
+                        points: [{ x: coords.x, y: coords.y }]
+                    };
+                    
+                    drawingPaths.value.push(newPath);
+                    
+                    console.log('🎨 开始绘图:', coords, '模式:', drawingMode.value);
+                };
+
+                // 🎨 绘图中
+                const draw = (e) => {
+                    if (!isDrawing.value || drawingPaths.value.length === 0) return;
+                    
+                    const coords = getCanvasCoordinates(e);
+                    const currentPath = drawingPaths.value[drawingPaths.value.length - 1];
+                    
+                    // 添加点到当前路径
+                    currentPath.points.push({ x: coords.x, y: coords.y });
+                    
+                    // 实时绘制新的线段到主画布
+                    const ctx = canvasContext.value;
+                    ctx.save();
+                    
+                    if (currentPath.mode === 'eraser') {
+                        ctx.globalCompositeOperation = 'destination-out';
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.strokeStyle = currentPath.color;
+                        ctx.globalAlpha = currentPath.opacity;
+                    }
+                    
+                    ctx.lineWidth = currentPath.size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(lastX.value, lastY.value);
+                    ctx.lineTo(coords.x, coords.y);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                    
+                    // 🎯 同时在遮罩画布上绘制（只有在编辑模式下且不是橡皮擦时）
+                    if (modalMode.value === 'edit' && currentPath.mode !== 'eraser' && maskContext.value) {
+                        const maskCtx = maskContext.value;
+                        maskCtx.save();
+                        
+                        // 在遮罩上用白色绘制（表示要编辑的区域）
+                        maskCtx.globalCompositeOperation = 'source-over';
+                        maskCtx.strokeStyle = '#FFFFFF';
+                        maskCtx.globalAlpha = 1.0;
+                        maskCtx.lineWidth = currentPath.size;
+                        maskCtx.lineCap = 'round';
+                        maskCtx.lineJoin = 'round';
+                        
+                        maskCtx.beginPath();
+                        maskCtx.moveTo(lastX.value, lastY.value);
+                        maskCtx.lineTo(coords.x, coords.y);
+                        maskCtx.stroke();
+                        
+                        maskCtx.restore();
+                    }
+                    
+                    lastX.value = coords.x;
+                    lastY.value = coords.y;
+                };
+
+                // 🎨 停止绘图
+                const stopDrawing = () => {
+                    if (isDrawing.value) {
+                        isDrawing.value = false;
+                        
+                        // 获取当前路径信息用于调试
+                        const currentPath = drawingPaths.value[drawingPaths.value.length - 1];
+                        console.log('🎨 停止绘图 - 路径点数:', currentPath ? currentPath.points.length : 0);
+                        console.log('🎨 总路径数:', drawingPaths.value.length);
+                        
+                        // 更新撤销状态
+                        updateUndoState();
+                    }
+                };
+
+                // 🔙 撤销功能
+                const undoDrawing = () => {
+                    if (drawingPaths.value.length > 0) {
+                        // 移除最后一个路径
+                        drawingPaths.value.pop();
+                        
+                        // 重绘画布
+                        redrawCanvas();
+                        
+                        updateUndoState();
+                        
+                        console.log('↶ 撤销操作，剩余路径:', drawingPaths.value.length);
+                    }
+                };
+
+                // 🔄 更新撤销状态
+                const updateUndoState = () => {
+                    canUndo.value = drawingPaths.value.length > 0;
+                };
+
+                // 🎯 检查遮罩是否包含实际内容
+                const checkMaskHasContent = () => {
+                    console.log('🔍 开始检查遮罩内容...');
+                    
+                    if (!maskContext.value || !maskCanvas.value) {
+                        console.log('🎯 遮罩画布或上下文不存在');
+                        return false;
+                    }
+                    
+                    // 同时检查绘图路径和像素数据
+                    const hasDrawingPaths = drawingPaths.value.some(path => 
+                        path.mode !== 'eraser' && path.points && path.points.length > 1
+                    );
+                    
+                    console.log('🎯 绘图路径检查:', {
+                        totalPaths: drawingPaths.value.length,
+                        hasValidPaths: hasDrawingPaths,
+                        paths: drawingPaths.value.map(p => ({ mode: p.mode, points: p.points?.length || 0 }))
+                    });
+                    
+                    if (hasDrawingPaths) {
+                        console.log('🎯 基于绘图路径检测到涂抹内容');
+                        return true;
+                    }
+                    
+                    // 备用：检查像素数据
+                    try {
+                        const imageData = maskContext.value.getImageData(0, 0, canvasWidth.value, canvasHeight.value);
+                        const data = imageData.data;
+                        
+                        // 检查是否有非黑色像素（白色表示要编辑的区域）
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            
+                            // 如果发现白色或接近白色的像素，说明有涂抹内容
+                            if (r > 128 || g > 128 || b > 128) {
+                                console.log('🎯 基于像素数据检测到白色区域，有涂抹内容');
+                                return true;
+                            }
+                        }
+                        
+                        console.log('🎯 像素检查：遮罩中只有黑色背景，无涂抹内容');
+                        return false;
+                    } catch (error) {
+                        console.error('❌ 检查遮罩像素数据失败:', error);
+                        return hasDrawingPaths; // 降级到路径检查结果
+                    }
+                };
+
+                // 🚨 所有Fabric.js函数已移除，使用原生Canvas系统
+
+                // 🎨 所有Fabric.js代码已完全移除
+
+                // 🎨 原生Canvas设置绘图模式
+                const setDrawingMode = (mode) => {
+                    drawingMode.value = mode;
+                    
+                    console.log('🎨 切换绘图模式:', mode);
+                    
+                    switch (mode) {
+                        case 'pencil':
+                        case 'brush':
+                            console.log('🖌️ 画笔模式，尺寸:', brushSize.value, 'px，颜色:', drawingColor.value);
+                            break;
+                        case 'eraser':
+                            console.log('🧹 橡皮擦模式，尺寸:', brushSize.value, 'px');
+                            break;
+                        default:
+                            console.log('❓ 未知绘图模式:', mode);
+                    }
+                };
+
+                // 🎨 原生Canvas不需要特殊的笔刷设置更新
+                const updateBrushSettings = () => {
+                    console.log('🖌️ 笔刷设置更新:', {
+                        mode: drawingMode.value,
+                        size: brushSize.value,
+                        color: drawingColor.value,
+                        opacity: brushOpacity.value
+                    });
+                };
+
+                const updateBrushColor = () => {
+                    console.log('🎨 颜色更新:', drawingColor.value);
+                };
+
+                const updateBrushSize = () => {
+                    console.log('📏 画笔尺寸更新:', brushSize.value, 'px');
+                };
+
+                const updateBrushOpacity = () => {
+                    console.log('🔍 透明度更新:', brushOpacity.value);
+                };
+
+                // 🎨 原生Canvas清空画布
+                const clearCanvas = () => {
+                    if (!canvasContext.value) return;
+                    
+                    // 清空所有绘图路径
+                    drawingPaths.value = [];
+                    
+                    // 重绘画布（只有背景）
+                    redrawCanvas();
+                    
+                    // 🎯 同时清空遮罩画布
+                    if (maskContext.value && modalMode.value === 'edit') {
+                        maskContext.value.fillStyle = '#000000';
+                        maskContext.value.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                        console.log('🎯 遮罩画布已清空');
+                    }
+                    
+                    updateUndoState();
+                    
+                    console.log('🧹 画布已清空');
+                };
+
+                // 🚨 原生Canvas版本的undoDrawing和updateUndoState已在上方定义
+
+                const cancelDrawing = () => {
+                    closeDrawingModal();
+                };
+
+                // 🎨 原生Canvas确认绘图
+                const confirmDrawing = async () => {
+                    console.log('🔘 确定按钮被点击！');
+                    
+                    if (isConfirming.value) {
+                        console.log('⚠️ 正在处理中，忽略重复点击');
+                        return;
+                    }
+                    
+                    isConfirming.value = true;
+                    
+                    try {
+                        if (!modalCanvas.value || !canvasContext.value) {
+                            console.error('❌ Canvas或上下文为空');
+                            return;
+                        }
+                        
+                        console.log('✅ 原生Canvas存在，开始导出画布');
+                        console.log('📐 画布尺寸:', canvasWidth.value, 'x', canvasHeight.value);
+                        console.log('🎨 绘图路径数量:', drawingPaths.value.length);
+                        
+                        // 🔧 确保所有绘图内容都已绘制到Canvas上
+                        console.log('🔍 导出前Canvas状态:');
+                        console.log('  - Canvas尺寸:', modalCanvas.value.width, 'x', modalCanvas.value.height);
+                        console.log('  - 背景图片:', backgroundImage.value ? '存在' : '无');
+                        console.log('  - 绘图路径数:', drawingPaths.value.length);
+                        
+                        // 详细显示每个路径
+                        drawingPaths.value.forEach((path, index) => {
+                            console.log(`  路径${index + 1}: ${path.mode}, ${path.size}px, ${path.points.length}点, 颜色:${path.color}`);
+                        });
+                        
+                        redrawCanvas();
+                        console.log('🔄 重新绘制Canvas完成，确保包含所有内容');
+                        
+                        // 尝试导出Canvas，如果出现污染错误则使用备用方案
+                        let exportedImageData = null;
+                        try {
+                            exportedImageData = modalCanvas.value.toDataURL('image/png', 1.0);
+                            console.log('✅ 原生Canvas导出成功，数据长度:', exportedImageData.length);
+                        } catch (error) {
+                            console.error('❌ Canvas导出失败（可能是污染问题）:', error.message);
+                            
+                            if (error.message.includes('Tainted canvases may not be exported')) {
+                                console.log('🔄 检测到Canvas污染，使用服务器端合成方案...');
+                                
+                                try {
+                                    // 使用服务器端合成作为备用方案
+                                    exportedImageData = await serverSideCanvasExport();
+                                    
+                                    if (!exportedImageData) {
+                                        console.error('❌ 服务器端合成失败，使用空白图像');
+                                        // 创建一个简单的白色图像作为最后备用方案
+                                        const tempCanvas = document.createElement('canvas');
+                                        tempCanvas.width = canvasWidth.value;
+                                        tempCanvas.height = canvasHeight.value;
+                                        const tempCtx = tempCanvas.getContext('2d');
+                                        tempCtx.fillStyle = 'white';
+                                        tempCtx.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                                        exportedImageData = tempCanvas.toDataURL('image/png', 1.0);
+                                    }
+                                } catch (serverError) {
+                                    console.error('❌ 服务器端合成异常:', serverError);
+                                    // 创建简单的白色图像
+                                    const tempCanvas = document.createElement('canvas');
+                                    tempCanvas.width = canvasWidth.value;
+                                    tempCanvas.height = canvasHeight.value;
+                                    const tempCtx = tempCanvas.getContext('2d');
+                                    tempCtx.fillStyle = 'white';
+                                    tempCtx.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
+                                    exportedImageData = tempCanvas.toDataURL('image/png', 1.0);
+                                }
+                            } else {
+                                throw error;
+                            }
+                        }
+                        
+                        // 🎯 如果是编辑模式，同时导出遮罩数据
+                        let maskData = null;
+                        if (modalMode.value === 'edit' && maskContext.value) {
+                            // 检查遮罩是否包含实际内容（不只是黑色背景）
+                            const hasDrawingContent = checkMaskHasContent();
+                            if (hasDrawingContent) {
+                                try {
+                                    maskData = maskCanvas.value.toDataURL('image/png', 1.0);
+                                    console.log('🎯 遮罩数据导出成功，数据长度:', maskData.length);
+                                } catch (maskError) {
+                                    console.error('❌ 遮罩导出失败:', maskError.message);
+                                    // 遮罩画布不应该有污染问题，但如果有，创建一个简单的遮罩
+                                    maskData = await createSimpleMask();
+                                }
+                            } else {
+                                console.log('🎯 未检测到涂抹内容，将不使用遮罩');
+                            }
+                        }
+                        
+                        // 🔧 验证导出的图片是否包含绘图内容
+                        if (exportedImageData.length < 10000) {
+                            console.warn('⚠️ 导出图片数据太小，可能没有包含绘图内容');
+                        }
+                        
+                        // 验证导出图片的实际尺寸
+                        const testImg = new Image();
+                        testImg.onload = () => {
+                            console.log('📐 导出图片的实际尺寸:', testImg.width, 'x', testImg.height);
+                        };
+                        testImg.src = exportedImageData;
+                        
+                        // 🎯 如果是编辑模式，需要特殊处理
+                        if (modalMode.value === 'edit') {
+                            if (maskData) {
+                                console.log('🎯 编辑模式：检测到涂抹区域，将使用原图+遮罩进行局部编辑');
+                                // 保存遮罩数据到全局变量
+                                currentMaskData.value = maskData;
+                                // 🔧 关键修复：始终使用原始图像URL进行编辑
+                                if (currentEditingImageUrl.value) {
+                                    drawingImageUrl.value = currentEditingImageUrl.value; // 使用原始图像
+                                    console.log('🎯 将使用原始图像进行编辑:', currentEditingImageUrl.value.substring(0, 50) + '...');
+                                    console.log('🎯 遮罩数据长度:', maskData.length);
+                                } else {
+                                    console.warn('⚠️ 警告：原始图像URL为空，但有遮罩数据');
+                                    // 即使Canvas导出失败，也要确保有图像URL供编辑
+                                    drawingImageUrl.value = exportedImageData || currentEditingImageUrl.value || 'error';
+                                }
+                                console.log('🎯 遮罩数据已保存，准备进行局部编辑');
+                            } else {
+                                console.log('🎯 编辑模式但无涂抹区域，将进行全图编辑');
+                                currentMaskData.value = '';
+                                // 对于无涂抹的编辑，可以使用原始图像
+                                drawingImageUrl.value = currentEditingImageUrl.value || exportedImageData;
+                            }
+                        } else {
+                            // 绘图模式
+                            console.log('🎯 绘图模式：使用合成图像');
+                            currentMaskData.value = '';
+                            drawingImageUrl.value = exportedImageData;
+                        }
+                        
+                        console.log('✅ 图片已保存到drawingImageUrl，准备显示缩略图');
+                        
+                        // 尝试上传到服务器（异步，不阻塞关闭弹窗）
+                        setTimeout(async () => {
+                            try {
+                                console.log('🔄 后台上传图片到服务器...');
+                                
+                                // 将Base64数据转换为Blob
+                                const response = await fetch(exportedImageData);
+                                const blob = await response.blob();
+                                
+                                // 创建FormData上传到后端
+                                const formData = new FormData();
+                                formData.append('file', blob, 'edited-image.png');
+                                
+                                // 上传文件
+                                const uploadResponse = await axios.post(`${API_BASE}/api/upload-image`, formData, {
+                                    headers: {
+                                        'Content-Type': 'multipart/form-data'
+                                    }
+                                });
+                                
+                                if (uploadResponse.data.success) {
+                                    const uploadedUrl = `${API_BASE}${uploadResponse.data.file_url}`;
+                                    console.log('✅ 编辑后的图片上传成功:', uploadedUrl);
+                                    
+                                    // 更新为服务器URL
+                                    drawingImageUrl.value = uploadedUrl;
+                                } else {
+                                    console.log('⚠️ 上传失败，继续使用Base64数据');
+                                }
+                            } catch (error) {
+                                console.log('⚠️ 后台上传失败，继续使用Base64数据:', error.message);
+                            }
+                        }, 100);
+                        
+                    } catch (error) {
+                        console.error('❌ 确定按钮处理过程中出错:', error);
+                        alert('保存失败：' + error.message);
+                    } finally {
+                        isConfirming.value = false;
+                        closeDrawingModal();
+                    }
+                };
+
+                const clearDrawingImage = () => {
+                    drawingImageUrl.value = '';
+                    currentMaskData.value = ''; // 🎯 同时清空遮罩数据
+                };
+
+                // 复制功能暂时移除
+
+                // 组件挂载时加载数据
+                onMounted(() => {
+                    loadConversations();
+                    
+                    // 添加全局拖拽事件监听器
+                    document.addEventListener('dragenter', handleDragEnter);
+                    document.addEventListener('dragover', handleDragOver);
+                    document.addEventListener('dragleave', handleDragLeave);
+                    document.addEventListener('drop', handleDrop);
+                });
+
+                return {
+                    conversations,
+                    currentConversationId,
+                    currentConversation,
+                    inputMessage,
+                    isLoading,
+                    messagesContainer,
+                    inputTextarea,
+                    fileInput,
+                    uploadedImageUrl,
+                    uploadedImageFile,
+                    image1Url,
+                    image2Url,
+                    isDragOver,
+                    // 图像比例选择相关
+                    selectedRatio,
+                    ratioOptions,
+                    // 绘图弹窗相关
+                    showDrawingModal,
+                    modalMode,
+                    modalCanvas,
+                    maskCanvas,
+                    drawingColor,
+                    brushSize,
+                    brushOpacity,
+                    drawingMode,
+                    drawingImageUrl,
+                    canUndo,
+                    isConfirming,
+                    // 基础方法
+                    loadConversations,
+                    loadConversation,
+                    createNewConversation,
+                    deleteConversation,
+                    sendMessage,
+                    handleImageUpload,
+                    clearUploadedImage,
+                    clearImage1,
+                    clearImage2,
+                    selectRatio,
+                    getInputPlaceholder,
+                    canSendMessage,
+                    adjustTextareaHeight,
+                    openImage,
+                    downloadImage,
+                    formatTime,
+                    // 绘图弹窗方法
+                    loadImageWithProxy,
+                    openDrawingModal,
+                    openImageEditModal,
+                    closeDrawingModal,
+                    setDrawingMode,
+                    updateBrushColor,
+                    updateBrushSize,
+                    updateBrushOpacity,
+                    clearCanvas,
+                    undoDrawing,
+                    cancelDrawing,
+                    confirmDrawing,
+                    clearDrawingImage
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

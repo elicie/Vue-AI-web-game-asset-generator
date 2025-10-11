@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Configuration (contains sensitive API keys)
+config.json
+
+# Conversation History (user data)
+conversation_history.json
+
+# Uploaded Files
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+
+# Logs
+*.log
+logs/
+
+# Temporary Files
+*.tmp
+temp/
+tmp/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation (keep only essential docs)
+BRUSH_SIZE_FIX.md
+COORDINATE_FIX_SOLUTION.md
+DRAWING_EXPORT_DEBUG.md
+FABRIC_DEEP_ANALYSIS_FIX.md
+FABRIC_ISSUES_ULTIMATE_FIX.md
+NATIVE_CANVAS_COMPLETE_SOLUTION.md
+ULTRA_THICK_BRUSH_FIX.md
+ALL_THICK_BRUSH_FIX.md
+启动说明.md
+
+
