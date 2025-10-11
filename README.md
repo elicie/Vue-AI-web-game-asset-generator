@@ -1,4 +1,4 @@
-# 🍌 Nano-Banana AI Image Studio
+# 🍌 Vue-AI-web-game-asset-generator
 
 <div align="center">
 
