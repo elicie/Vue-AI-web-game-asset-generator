@@ -1,6 +1,7 @@
 # 🍌 Vue-AI-web-game-asset-generator
 
 <div align="center">
+[!视频演示效果：https://www.bilibili.com/video/BV1Ef4TzgEoG/?spm_id_from=333.1387.homepage.video_card.click]
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
