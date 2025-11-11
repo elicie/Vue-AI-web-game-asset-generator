@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ko-KR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -896,15 +896,15 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">🍌 Nano-Banana AI</div>
                 <button class="new-chat-btn" @click="createNewConversation">
-                    ➕ 新建对话
+                    ➕ 새 대화
                 </button>
             </div>
             
             <div class="conversations-list">
                 <div v-if="conversations.length === 0" class="empty-state">
                     <div class="empty-icon">💬</div>
-                    <div class="empty-title">暂无对话</div>
-                    <div class="empty-description">点击新建对话开始聊天</div>
+                    <div class="empty-title">대화 없음</div>
+                    <div class="empty-description">새 대화를 만들어 채팅을 시작하세요</div>
                 </div>
                 
                 <div 
@@ -916,13 +916,13 @@
                 >
                     <div class="conversation-title">{{ conversation.title }}</div>
                     <div class="conversation-meta">
-                        <span>{{ conversation.message_count }} 条消息</span>
+                        <span>{{ conversation.message_count }}개 메시지</span>
                         <span>{{ formatTime(conversation.updated_at) }}</span>
                     </div>
-                    <button 
-                        class="delete-btn" 
+                    <button
+                        class="delete-btn"
                         @click.stop="deleteConversation(conversation.id)"
-                        title="删除对话"
+                        title="대화 삭제"
                     >
                         ✕
                     </button>
@@ -941,15 +941,15 @@
             <div class="chat-messages" ref="messagesContainer">
                 <div v-if="!currentConversation" class="empty-state">
                     <div class="empty-icon">🚀</div>
-                    <div class="empty-title">欢迎使用 Nano-Banana AI</div>
-                    <div class="empty-description">选择一个对话或创建新对话开始聊天</div>
+                    <div class="empty-title">Nano-Banana AI에 오신 것을 환영합니다</div>
+                    <div class="empty-description">대화를 선택하거나 새 대화를 만들어 시작하세요</div>
                 </div>
                 
                 <div v-if="currentConversation">
                     <div v-if="currentConversation.messages.length === 0" class="empty-state">
                         <div class="empty-icon">✨</div>
-                        <div class="empty-title">开始新对话</div>
-                        <div class="empty-description">发送消息开始与AI对话，支持文本聊天和图像生成</div>
+                        <div class="empty-title">새 대화 시작</div>
+                        <div class="empty-description">메시지를 보내 AI와 대화를 시작하세요. 텍스트 채팅과 이미지 생성을 지원합니다</div>
                     </div>
                     
                     <div 
@@ -966,31 +966,31 @@
                                 <!-- 双图模式显示 -->
                                 <div v-if="message.is_dual_image" class="dual-images-display">
                                     <div class="image-item">
-                                        <div class="image-label-small">图1</div>
-                                        <img 
-                                            :src="message.input_image_url" 
+                                        <div class="image-label-small">이미지 1</div>
+                                        <img
+                                            :src="message.input_image_url"
                                             class="message-image dual-image"
                                             @click="openImage(message.input_image_url)"
-                                            alt="图1"
+                                            alt="이미지 1"
                                         >
                                     </div>
                                     <div v-if="message.image2_url" class="image-item">
-                                        <div class="image-label-small">图2</div>
-                                        <img 
-                                            :src="message.image2_url" 
+                                        <div class="image-label-small">이미지 2</div>
+                                        <img
+                                            :src="message.image2_url"
                                             class="message-image dual-image"
                                             @click="openImage(message.image2_url)"
-                                            alt="图2"
+                                            alt="이미지 2"
                                         >
                                     </div>
                                 </div>
                                 <!-- 单图模式显示 -->
-                                <img 
+                                <img
                                     v-else-if="message.input_image_url"
-                                    :src="message.input_image_url" 
+                                    :src="message.input_image_url"
                                     class="message-image"
                                     @click="openImage(message.input_image_url)"
-                                    alt="用户上传的图像"
+                                    alt="업로드한 이미지"
                                 >
                             </div>
                             
@@ -999,28 +999,28 @@
                             
                             <!-- AI生成的图像 (仅对AI回复显示) -->
                             <div v-if="message.role === 'assistant' && message.image_url" class="image-container">
-                                <img 
-                                    :src="message.image_url" 
+                                <img
+                                    :src="message.image_url"
                                     class="message-image"
                                     @click="openImage(message.image_url)"
-                                    alt="AI生成的图像"
+                                    alt="AI 생성 이미지"
                                     style="margin-top: 8px;"
                                 >
                                 <div v-if="message.image_resolution" class="image-resolution">
                                     {{ message.image_resolution }}
                                 </div>
-                                <button 
-                                    class="image-download-btn" 
+                                <button
+                                    class="image-download-btn"
                                     @click="downloadImage(message.image_url)"
-                                    title="下载图像"
+                                    title="이미지 다운로드"
                                 >
                                     ⬇️
                                 </button>
                                 <!-- AI图片编辑按钮 -->
-                                <button 
-                                    class="ai-image-edit-btn" 
+                                <button
+                                    class="ai-image-edit-btn"
                                     @click="openImageEditModal(message.image_url)"
-                                    title="编辑图片"
+                                    title="이미지 편집"
                                 >
                                     🖌️
                                 </button>
@@ -1031,7 +1031,7 @@
                     
                     <div v-if="isLoading" class="message assistant">
                         <div class="message-content loading">
-                            <span>AI正在思考</span>
+                            <span>AI가 생각 중입니다</span>
                             <div class="loading-dots">
                                 <div class="loading-dot"></div>
                                 <div class="loading-dot"></div>
@@ -1047,9 +1047,9 @@
                 <div class="input-controls">
                     <div class="file-upload-wrapper">
                         <label class="file-upload-btn">
-                            📁 上传图像 (可选)
-                            <input 
-                                type="file" 
+                            📁 이미지 업로드 (선택사항)
+                            <input
+                                type="file"
                                 class="file-upload-input"
                                 accept="image/*"
                                 @change="handleImageUpload"
@@ -1062,50 +1062,50 @@
                     <div v-if="image1Url || image2Url" class="images-preview-section">
                         <!-- 图1预览 -->
                         <div v-if="image1Url" class="image-preview-item">
-                            <div class="image-label">图1</div>
-                            <img :src="image1Url" class="uploaded-image-preview" alt="图1">
-                            <button @click="clearImage1" class="clear-image-btn">清除图1</button>
+                            <div class="image-label">이미지 1</div>
+                            <img :src="image1Url" class="uploaded-image-preview" alt="이미지 1">
+                            <button @click="clearImage1" class="clear-image-btn">이미지 1 제거</button>
                         </div>
-                        
+
                         <!-- 图2预览 -->
                         <div v-if="image2Url" class="image-preview-item">
-                            <div class="image-label">图2</div>
-                            <img :src="image2Url" class="uploaded-image-preview" alt="图2">
-                            <button @click="clearImage2" class="clear-image-btn">清除图2</button>
+                            <div class="image-label">이미지 2</div>
+                            <img :src="image2Url" class="uploaded-image-preview" alt="이미지 2">
+                            <button @click="clearImage2" class="clear-image-btn">이미지 2 제거</button>
                         </div>
                     </div>
                     
                     <!-- 单图模式的预览（兼容性） -->
                     <div v-if="uploadedImageUrl && !image1Url && !image2Url" style="display: flex; align-items: center; margin-top: 8px;">
-                        <img :src="uploadedImageUrl" class="uploaded-image-preview" alt="上传的图像">
-                        <button @click="clearUploadedImage" class="clear-image-btn">清除</button>
+                        <img :src="uploadedImageUrl" class="uploaded-image-preview" alt="업로드한 이미지">
+                        <button @click="clearUploadedImage" class="clear-image-btn">제거</button>
                     </div>
-                    
+
                     <!-- 绘图功能 -->
-                    <button 
-                        class="file-upload-btn" 
+                    <button
+                        class="file-upload-btn"
                         @click="openDrawingModal"
                         style="margin-left: 12px;"
                     >
-                        🎨 打开绘图
+                        🎨 그림 도구 열기
                     </button>
-                    
+
                     <!-- 绘图结果预览 -->
                     <div v-if="drawingImageUrl" style="margin-top: 8px;">
-                        <img :src="drawingImageUrl" class="drawing-preview" alt="绘图预览">
-                        <button @click="clearDrawingImage" class="clear-image-btn" style="margin-left: 8px; font-size: 12px;">清除绘图</button>
+                        <img :src="drawingImageUrl" class="drawing-preview" alt="그림 미리보기">
+                        <button @click="clearDrawingImage" class="clear-image-btn" style="margin-left: 8px; font-size: 12px;">그림 제거</button>
                     </div>
                 </div>
                 
                 <!-- 图像比例选择器 -->
                 <div class="ratio-selector">
-                    <label class="ratio-selector-label">输出图像比例：</label>
+                    <label class="ratio-selector-label">출력 이미지 비율:</label>
                     <div class="ratio-options">
-                        <div 
-                            v-for="ratio in ratioOptions" 
+                        <div
+                            v-for="ratio in ratioOptions"
                             :key="ratio.value"
                             class="ratio-option"
-                            :class="{ 
+                            :class="{
                                 selected: selectedRatio === ratio.value,
                                 auto: ratio.value === 'auto'
                             }"
@@ -1118,7 +1118,7 @@
                 
                 <!-- 消息输入区域 -->
                 <div class="input-container">
-                    <textarea 
+                    <textarea
                         v-model="inputMessage"
                         class="input-box"
                         :placeholder="getInputPlaceholder()"
@@ -1127,13 +1127,13 @@
                         :disabled="isLoading"
                         ref="inputTextarea"
                     ></textarea>
-                    <button 
+                    <button
                         class="send-btn"
                         @click="sendMessage"
                         :disabled="!canSendMessage()"
-                        title="发送消息"
+                        title="메시지 보내기"
                     >
-                        生成
+                        생성
                     </button>
                 </div>
             </div>
@@ -1142,7 +1142,7 @@
         <!-- 拖拽上传覆盖层 -->
         <div v-if="isDragOver" class="drag-overlay">
             <div class="drag-message">
-                📁 拖放图片到这里上传
+                📁 이미지를 여기에 드롭하여 업로드
             </div>
         </div>
         
@@ -1152,7 +1152,7 @@
                 <!-- 弹窗标题栏 -->
                 <div class="drawing-modal-header">
                     <div class="drawing-modal-title">
-                        {{ modalMode === 'edit' ? '🖼️ 图片编辑' : '🎨 绘图创作' }}
+                        {{ modalMode === 'edit' ? '🖼️ 이미지 편집' : '🎨 그림 그리기' }}
                     </div>
                     <button class="drawing-modal-close" @click="closeDrawingModal">
                         ✕
@@ -1165,53 +1165,53 @@
                     <div class="drawing-modal-toolbar">
                         <!-- 绘图工具组 -->
                         <div class="drawing-modal-tool-group">
-                            <button @click="setDrawingMode('pencil')" class="drawing-modal-btn" :class="{ active: drawingMode === 'pencil' }" title="铅笔">✏️</button>
-                            <button @click="setDrawingMode('brush')" class="drawing-modal-btn" :class="{ active: drawingMode === 'brush' }" title="画笔">🖌️</button>
-                            <button @click="setDrawingMode('eraser')" class="drawing-modal-btn" :class="{ active: drawingMode === 'eraser' }" title="橡皮擦">🗑️</button>
+                            <button @click="setDrawingMode('pencil')" class="drawing-modal-btn" :class="{ active: drawingMode === 'pencil' }" title="연필">✏️</button>
+                            <button @click="setDrawingMode('brush')" class="drawing-modal-btn" :class="{ active: drawingMode === 'brush' }" title="브러시">🖌️</button>
+                            <button @click="setDrawingMode('eraser')" class="drawing-modal-btn" :class="{ active: drawingMode === 'eraser' }" title="지우개">🗑️</button>
                         </div>
-                        
+
                         <!-- 颜色和大小组 -->
                         <div class="drawing-modal-tool-group">
-                            <input 
-                                type="color" 
-                                v-model="drawingColor" 
+                            <input
+                                type="color"
+                                v-model="drawingColor"
                                 class="color-picker"
-                                title="选择颜色"
+                                title="색상 선택"
                                 @change="updateBrushColor"
                             >
-                            <label style="font-size: 11px;">大小:</label>
-                            <input 
-                                type="range" 
-                                min="1" 
-                                max="50" 
+                            <label style="font-size: 11px;">크기:</label>
+                            <input
+                                type="range"
+                                min="1"
+                                max="50"
                                 v-model="brushSize"
                                 class="brush-size"
-                                title="画笔大小"
+                                title="브러시 크기"
                                 @input="updateBrushSize"
                             >
                             <span style="font-size: 11px;">{{ brushSize }}px</span>
                         </div>
-                        
+
                         <!-- 透明度组 -->
                         <div class="drawing-modal-tool-group">
-                            <label style="font-size: 11px;">透明度:</label>
-                            <input 
-                                type="range" 
-                                min="0" 
-                                max="1" 
+                            <label style="font-size: 11px;">투명도:</label>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
                                 step="0.1"
                                 v-model="brushOpacity"
                                 class="brush-size"
-                                title="透明度"
+                                title="투명도"
                                 @input="updateBrushOpacity"
                             >
                             <span style="font-size: 11px;">{{ Math.round(brushOpacity * 100) }}%</span>
                         </div>
-                        
+
                         <!-- 操作组 -->
                         <div class="drawing-modal-tool-group">
-                            <button @click="undoDrawing" class="drawing-modal-btn" :disabled="!canUndo" title="撤销">↶</button>
-                            <button @click="clearCanvas" class="drawing-modal-btn" title="清空">🧹</button>
+                            <button @click="undoDrawing" class="drawing-modal-btn" :disabled="!canUndo" title="실행 취소">↶</button>
+                            <button @click="clearCanvas" class="drawing-modal-btn" title="전체 지우기">🧹</button>
                         </div>
                     </div>
                     
@@ -1232,15 +1232,15 @@
                 <!-- 弹窗底部按钮 -->
                 <div class="drawing-modal-footer">
                     <button class="drawing-modal-footer-btn cancel" @click="cancelDrawing">
-                        取消
+                        취소
                     </button>
-                    <button 
-                        class="drawing-modal-footer-btn confirm" 
-                        @click="confirmDrawing" 
+                    <button
+                        class="drawing-modal-footer-btn confirm"
+                        @click="confirmDrawing"
                         :disabled="isConfirming"
                         style="position: relative;"
                     >
-                        {{ isConfirming ? '处理中...' : '确定' }}
+                        {{ isConfirming ? '처리 중...' : '확인' }}
                     </button>
                 </div>
             </div>
@@ -1325,7 +1325,7 @@
                         const response = await axios.get(`${API_BASE}/api/conversations`);
                         conversations.value = response.data;
                     } catch (error) {
-                        console.error('加载对话列表失败:', error);
+                        console.error('대화 목록 로드 실패:', error);
                     }
                 };
 
@@ -1340,7 +1340,7 @@
                         await nextTick();
                         scrollToBottom();
                     } catch (error) {
-                        console.error('加载对话失败:', error);
+                        console.error('대화 로드 실패:', error);
                     }
                 };
 
@@ -1357,34 +1357,34 @@
                         currentConversationId.value = conversationId;
                         currentConversation.value = {
                             id: conversationId,
-                            title: `新对话 ${conversationId}`,
+                            title: `새 대화 ${conversationId}`,
                             messages: [],
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         };
                     } catch (error) {
-                        console.error('创建新对话失败:', error);
+                        console.error('새 대화 생성 실패:', error);
                     }
                 };
 
                 // 删除对话
                 const deleteConversation = async (conversationId) => {
-                    if (!confirm('确定要删除这个对话吗？')) return;
-                    
+                    if (!confirm('이 대화를 삭제하시겠습니까?')) return;
+
                     try {
                         await axios.delete(`${API_BASE}/api/conversations/${conversationId}`);
-                        
+
                         // 从列表中移除
                         conversations.value = conversations.value.filter(conv => conv.id !== conversationId);
-                        
+
                         // 如果删除的是当前对话，清空当前对话
                         if (currentConversationId.value === conversationId) {
                             currentConversationId.value = null;
                             currentConversation.value = null;
                         }
                     } catch (error) {
-                        console.error('删除对话失败:', error);
-                        alert('删除对话失败，请稍后重试');
+                        console.error('대화 삭제 실패:', error);
+                        alert('대화 삭제에 실패했습니다. 나중에 다시 시도해주세요');
                     }
                 };
 
@@ -1395,13 +1395,13 @@
                     
                     // 检查文件类型
                     if (!file.type.startsWith('image/')) {
-                        alert('请选择图像文件');
+                        alert('이미지 파일을 선택해주세요');
                         return;
                     }
-                    
+
                     // 检查文件大小 (10MB)
                     if (file.size > 10 * 1024 * 1024) {
-                        alert('文件大小不能超过10MB');
+                        alert('파일 크기는 10MB를 초과할 수 없습니다');
                         return;
                     }
                     
@@ -1439,26 +1439,26 @@
                                 console.log('图2上传成功:', image2Url.value);
                             } else {
                                 // 已经有两张图片，询问用户要替换哪张
-                                const replaceChoice = confirm('已有两张图片，是否替换图1？点击"确定"替换图1，点击"取消"替换图2');
+                                const replaceChoice = confirm('이미 두 개의 이미지가 있습니다. 이미지 1을 교체하시겠습니까? "확인"을 클릭하면 이미지 1 교체, "취소"를 클릭하면 이미지 2 교체');
                                 if (replaceChoice) {
                                     image1Url.value = uploadedUrl;
-                                    console.log('图1已替换:', image1Url.value);
+                                    console.log('이미지 1 교체됨:', image1Url.value);
                                 } else {
                                     image2Url.value = uploadedUrl;
-                                    console.log('图2已替换:', image2Url.value);
+                                    console.log('이미지 2 교체됨:', image2Url.value);
                                 }
                             }
-                            
+
                             // 重置文件输入
                             if (fileInput.value) {
                                 fileInput.value.value = '';
                             }
                         } else {
-                            alert('图像上传失败');
+                            alert('이미지 업로드에 실패했습니다');
                         }
                     } catch (error) {
-                        console.error('图像上传失败:', error);
-                        alert('图像上传失败：' + (error.response?.data?.detail || error.message));
+                        console.error('이미지 업로드 실패:', error);
+                        alert('이미지 업로드 실패: ' + (error.response?.data?.detail || error.message));
                     }
                 };
 
@@ -1517,7 +1517,7 @@
                         if (file.type.startsWith('image/')) {
                             await handleImageUpload({ target: { files: [file] } });
                         } else {
-                            alert('请拖拽图片文件');
+                            alert('이미지 파일을 드롭해주세요');
                         }
                     }
                 };
@@ -1525,9 +1525,9 @@
                 // 获取输入提示文本
                 const getInputPlaceholder = () => {
                     if (uploadedImageUrl.value || drawingImageUrl.value) {
-                        return '输入编辑指令... (例如：把这个图像变成卡通风格)';
+                        return '편집 명령을 입력하세요... (예: 이 이미지를 만화 스타일로 변환)';
                     }
-                    return '输入消息... (支持文本对话和图像生成，可上传图像或绘图)';
+                    return '메시지를 입력하세요... (텍스트 대화와 이미지 생성 지원, 이미지 업로드 또는 그림 가능)';
                 };
 
                 // 检查是否可以发送消息
@@ -1688,7 +1688,7 @@
                         scrollToBottom();
                         
                     } catch (error) {
-                        console.error('发送消息失败:', error);
+                        console.error('메시지 전송 실패:', error);
                         
                         // 添加错误消息
                         const errorMessage = {
@@ -1808,8 +1808,8 @@
                         }
                         
                     } catch (error) {
-                        console.error('下载图像失败:', error);
-                        alert('下载失败，正在尝试在新窗口打开图像...');
+                        console.error('이미지 다운로드 실패:', error);
+                        alert('다운로드 실패, 새 창에서 이미지를 열고 있습니다...');
                         // 作为最后的备选方案，在新窗口打开图像
                         window.open(imageUrl, '_blank');
                     }
@@ -1818,19 +1818,19 @@
                 // 格式化时间
                 const formatTime = (timestamp) => {
                     if (!timestamp) return '';
-                    
+
                     const date = new Date(timestamp);
                     const now = new Date();
                     const diff = now - date;
-                    
+
                     if (diff < 60000) { // 1分钟内
-                        return '刚刚';
+                        return '방금';
                     } else if (diff < 3600000) { // 1小时内
-                        return Math.floor(diff / 60000) + '分钟前';
+                        return Math.floor(diff / 60000) + '분 전';
                     } else if (diff < 86400000) { // 24小时内
-                        return Math.floor(diff / 3600000) + '小时前';
+                        return Math.floor(diff / 3600000) + '시간 전';
                     } else {
-                        return date.toLocaleDateString();
+                        return date.toLocaleDateString('ko-KR');
                     }
                 };
 
@@ -2039,7 +2039,7 @@
                         }
                         
                     } catch (error) {
-                        console.error('服务器端合成失败:', error);
+                        console.error('서버 측 합성 실패:', error);
                         throw error;
                     }
                 };
