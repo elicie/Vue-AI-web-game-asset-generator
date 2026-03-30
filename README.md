@@ -10,7 +10,7 @@
 
 **一个强大的AI驱动图像生成与编辑工具，基于Google Nano-Banana模型**
 
-[English](#english) | [中文](#chinese)
+[English](#english) | [中文](#chinese) | [한국어](#korean)
 
 <img src="https://via.placeholder.com/800x400/4A90E2/FFFFFF?text=Nano-Banana+AI+Image+Studio" alt="Nano-Banana AI" />
 
@@ -439,6 +439,217 @@ A: Please submit an issue on GitHub Issues.
 - [KIE.ai](https://kie.ai/) - AI model hosting platform
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
 - [Vue.js](https://vuejs.org/) - Progressive frontend framework
+
+---
+
+## <a id="korean"></a>🇰🇷 한국어 문서
+
+### ✨ 주요 기능
+
+- 🎨 **AI 이미지 생성** - 자연어 설명으로 아름다운 이미지를 생성합니다
+- ✏️ **스마트 이미지 편집** - 이미지를 업로드하고 자연어로 편집합니다
+- 🎯 **부분 편집** - 브러시 도구로 편집 영역을 정밀하게 지정합니다
+- 📐 **다양한 이미지 비율** - 1:1, 16:9, 9:16, 4:3, 3:4 등 다양한 비율 지원
+- 💬 **대화 관리** - 모든 대화 기록과 생성된 이미지를 자동 저장합니다
+- 🌐 **모던 인터페이스** - Vue 3 기반의 부드러운 사용자 경험
+
+### 🚀 향후 계획
+
+다음과 같은 강력한 기능들을 적극적으로 개발하고 있습니다:
+
+- 🔪 **원클릭 배경 제거** - 주체를 지능적으로 인식하여 배경을 자동 제거
+- 🔍 **이미지 초해상도** - AI 기반 이미지 업스케일링으로 디테일 유지
+- 🎬 **비디오 생성** - 텍스트에서 비디오로, 이미지에서 비디오로
+- 🎭 **스타일 변환** - 이미지를 다양한 예술 스타일로 변환
+- 🖼️ **일괄 처리** - 여러 이미지를 동시에 처리
+
+### 📦 빠른 시작
+
+#### 1. 환경 요구사항
+
+- Python 3.8 이상
+- pip 패키지 관리자
+
+#### 2. 설치 방법
+
+```bash
+# 저장소 클론
+git clone https://github.com/yourusername/nano-banana-ai.git
+cd nano-banana-ai
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# API 키 설정
+cp config.example.json config.json
+# config.json을 편집하여 Nano-Banana API 키를 입력하세요
+```
+
+#### 3. API 키 발급
+
+1. [KIE.ai](https://kie.ai/)에 방문하여 계정을 생성합니다
+2. 대시보드에서 API 키를 생성합니다
+3. `config.json`의 `api.nano_banana_api_key` 항목에 API 키를 입력합니다
+
+#### 4. 애플리케이션 실행
+
+```bash
+# 방법 1: 실행 스크립트 사용
+python run.py
+
+# 방법 2: 백엔드 직접 실행
+python backend.py
+```
+
+#### 5. 애플리케이션 접속
+
+브라우저를 열고 다음 주소에 접속하세요:
+- **웹 인터페이스**: http://localhost:8000
+- **API 문서**: http://localhost:8000/docs
+- **대화형 문서**: http://localhost:8000/redoc
+
+### 🛠️ 기술 스택
+
+#### 프론트엔드
+- **Vue 3** - 점진적 JavaScript 프레임워크
+- **Axios** - HTTP 클라이언트
+- **HTML5 Canvas** - 이미지 그리기 및 편집
+
+#### 백엔드
+- **FastAPI** - 모던 Python 웹 프레임워크
+- **Uvicorn** - 고성능 ASGI 서버
+- **Pydantic** - 데이터 유효성 검사
+- **Pillow** - 이미지 처리 라이브러리
+
+#### AI 서비스
+- **Google Nano-Banana** - 이미지 생성 및 편집
+- **KIE.ai Platform** - AI 모델 호스팅 플랫폼
+
+### 📁 프로젝트 구조
+
+```
+nano-banana-ai/
+├── backend.py              # FastAPI 백엔드 메인 프로그램
+├── gemini_api.py           # Nano-Banana API 래퍼
+├── index.html              # Vue 3 프론트엔드 인터페이스
+├── run.py                  # 애플리케이션 실행 스크립트
+├── config.json             # 설정 파일 (직접 생성 필요)
+├── config.example.json     # 설정 파일 템플릿
+├── requirements.txt        # Python 의존성 목록
+├── .gitignore             # Git 무시 파일 설정
+├── README.md              # 프로젝트 설명 문서
+└── uploads/               # 업로드 이미지 저장 디렉토리 (자동 생성)
+```
+
+### 🎯 사용 가이드
+
+#### 이미지 생성
+1. 입력창에 원하는 이미지를 설명합니다. 예: "잔디밭에서 놀고 있는 귀여운 주황색 고양이"
+2. 이미지 비율을 선택합니다 (선택사항)
+3. 전송 버튼을 클릭하고 AI가 이미지를 생성할 때까지 기다립니다
+
+#### 이미지 편집
+1. "이미지 업로드" 버튼을 클릭하고 편집할 이미지를 선택합니다
+2. 원하는 수정 사항을 설명합니다. 예: "하늘을 석양으로 바꿔줘"
+3. 전송을 클릭하면 AI가 설명에 따라 이미지를 편집합니다
+
+#### 부분 편집 (실험적 기능)
+1. 이미지를 업로드한 후 "브러시" 도구를 클릭합니다
+2. 이미지에서 편집하려는 영역을 표시합니다
+3. 수정 내용을 설명하면 AI가 표시된 영역만 수정합니다
+
+### 🔧 설정 안내
+
+`config.json` 설정 파일 설명:
+
+```json
+{
+  "api": {
+    "nano_banana_api_key": "YOUR_API_KEY_HERE",  // 필수: API 키
+    "comment": "https://kie.ai/ 에서 API 키를 발급받으세요"
+  },
+  "server": {
+    "host": "127.0.0.1",      // 서버 주소
+    "port": 7864,             // 서버 포트
+    "share": false            // 공개 URL 생성 여부
+  },
+  "generation": {
+    "default_width": 512,     // 기본 이미지 너비
+    "default_height": 512,    // 기본 이미지 높이
+    "max_width": 1024,        // 최대 이미지 너비
+    "max_height": 1024        // 최대 이미지 높이
+  }
+}
+```
+
+### 🌍 환경 변수 (선택사항)
+
+환경 변수를 사용하여 API 키를 설정할 수도 있습니다:
+
+```bash
+# Linux/Mac
+export NANO_BANANA_API_KEY="your_api_key_here"
+
+# Windows (PowerShell)
+$env:NANO_BANANA_API_KEY="your_api_key_here"
+
+# Windows (CMD)
+set NANO_BANANA_API_KEY=your_api_key_here
+```
+
+### 📝 API 엔드포인트
+
+주요 API 엔드포인트:
+
+- `GET /` - 웹 인터페이스
+- `GET /api/conversations` - 대화 목록 조회
+- `POST /api/conversations` - 새 대화 생성
+- `DELETE /api/conversations/{id}` - 대화 삭제
+- `POST /api/chat` - 채팅 메시지 전송
+- `POST /api/upload-image` - 이미지 업로드
+- `GET /uploads/{filename}` - 업로드된 이미지 조회
+
+전체 API 문서: http://localhost:8000/docs
+
+### 🤝 기여 안내
+
+모든 형태의 기여를 환영합니다! 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
+
+#### 기여 방법
+
+1. 이 저장소를 Fork 합니다
+2. 기능 브랜치를 생성합니다 (`git checkout -b feature/AmazingFeature`)
+3. 변경 사항을 커밋합니다 (`git commit -m 'Add some AmazingFeature'`)
+4. 브랜치에 Push 합니다 (`git push origin feature/AmazingFeature`)
+5. Pull Request를 제출합니다
+
+### 📄 라이선스
+
+이 프로젝트는 MIT 라이선스를 따릅니다 - 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요
+
+### 💡 자주 묻는 질문
+
+**Q: API 키는 어디서 발급받나요?**
+A: https://kie.ai/ 에 접속하여 가입 후 대시보드에서 API 키를 생성하세요.
+
+**Q: 어떤 이미지 형식을 지원하나요?**
+A: PNG, JPEG, JPG, WEBP, GIF 등 일반적인 형식을 지원합니다.
+
+**Q: 이미지 생성에 얼마나 걸리나요?**
+A: 보통 10~30초 정도 소요되며, 네트워크 및 서버 부하에 따라 달라집니다.
+
+**Q: 로컬에 배포할 수 있나요?**
+A: 네, 하지만 KIE.ai 서비스에 연결하기 위한 유효한 API 키가 필요합니다.
+
+**Q: 버그 리포트나 기능 제안은 어떻게 하나요?**
+A: GitHub Issues에 이슈를 등록해 주세요.
+
+### 🙏 감사의 말
+
+- [Google Nano-Banana](https://ai.google.dev/) - 강력한 AI 이미지 모델
+- [KIE.ai](https://kie.ai/) - AI 모델 호스팅 플랫폼
+- [FastAPI](https://fastapi.tiangolo.com/) - 모던 웹 프레임워크
+- [Vue.js](https://vuejs.org/) - 점진적 프론트엔드 프레임워크
 
 ---
 
