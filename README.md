@@ -10,6 +10,8 @@
 
 **一个强大的AI驱动图像生成与编辑工具，基于Google Nano-Banana模型**
 
+**A powerful AI-driven image generation and editing tool, powered by Google Nano-Banana**
+
 [English](#english) | [中文](#chinese) | [한국어](#korean)
 
 <img src="https://via.placeholder.com/800x400/4A90E2/FFFFFF?text=Nano-Banana+AI+Image+Studio" alt="Nano-Banana AI" />
@@ -657,6 +659,6 @@ A: GitHub Issues에 이슈를 등록해 주세요.
 
 **Made with ❤️ by the Nano-Banana Community**
 
-[⬆ Back to Top](#-nano-banana-ai-image-studio)
+[⬆ Back to Top](#-vue-ai-web-game-asset-generator)
 
 </div>
