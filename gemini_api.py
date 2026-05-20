@@ -9,9 +9,12 @@ import json
 import time
 import base64
 import mimetypes
-from typing import Optional, Dict, Any, List, Union
+import logging
+from typing import Optional, Dict, List
 from PIL import Image
 from io import BytesIO
+
+logger = logging.getLogger(__name__)
 
 
 class NanoBananaAPI:
@@ -66,7 +69,7 @@ class NanoBananaAPI:
         # KIE.ai文件上传API配置
         self.upload_base_url = "https://kieai.redpandaai.co"
         
-        print(f"🍌 使用Nano-Banana API - 图像生成: kie.ai平台")
+        logger.info("🍌 使用Nano-Banana API - 图像生成: kie.ai平台")
     
     def generate_content(self, text: str, conversation_history: Optional[List[Dict]] = None) -> Optional[str]:
         """
@@ -132,7 +135,7 @@ class NanoBananaAPI:
             
             enhanced_prompt = prompt
             
-            print(f"\U0001f34c 使用Nano-Banana API生成{num_images}张图像: {enhanced_prompt}")
+            logger.info("🍌 使用Nano-Banana API生成%d张图像: %s", num_images, enhanced_prompt)
             
             # 按照官方示例构建请求数据
             payload = {
@@ -145,9 +148,9 @@ class NanoBananaAPI:
             
             # Apply aspect ratio to payload
             final_image_size = self._apply_aspect_ratio(payload, aspect_ratio, image_size)
-            print(f"\U0001f4d0 图像比例: {aspect_ratio} -> {final_image_size}")
+            logger.debug("📐 图像比例: %s -> %s", aspect_ratio, final_image_size)
             
-            print(f"\U0001f50d 完整payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+            logger.debug("🔍 完整payload: %s", json.dumps(payload, indent=2, ensure_ascii=False))
             
             headers = {
                 "Content-Type": "application/json",
@@ -158,7 +161,7 @@ class NanoBananaAPI:
             
             # 为每张图像发送请求
             for i in range(num_images):
-                print(f"🚀 正在生成第 {i+1}/{num_images} 张图像...")
+                logger.info("🚀 正在生成第 %d/%d 张图像...", i+1, num_images)
                 
                 # 按照官方示例发送请求
                 response = requests.post(
@@ -168,15 +171,15 @@ class NanoBananaAPI:
                     timeout=60
                 )
                 
-                print(f"📊 API响应状态: {response.status_code}")
+                logger.debug("📊 API响应状态(generate): %d", response.status_code)
                 
                 if response.status_code == 200:
                     result = response.json()
-                    print(f"✅ 任务创建成功: {result}")
+                    logger.info("✅ 任务创建成功: %s", result)
                     
                     # 检查API是否支持我们的config格式
                     if "error" in result or "message" in result:
-                        print(f"⚠️ API可能不支持当前格式: {result}")
+                        logger.warning("⚠️ API可能不支持当前格式: %s", result)
                     
                     # 检查任务状态和结果
                     if "data" in result:
@@ -195,18 +198,18 @@ class NanoBananaAPI:
                                         if img_response.status_code == 200:
                                             image = Image.open(BytesIO(img_response.content))
                                             images.append(image)
-                                            print(f"✅ 成功下载图像 {i+1}: {image.size}")
+                                            logger.info("✅ 成功下载图像 %s: %s", i+1, image.size)
                                     except Exception as e:
-                                        print(f"❌ 图像下载失败: {e}")
+                                        logger.error("❌ 图像下载失败: %s", e)
                                 elif output.startswith('data:image/'):
                                     # Base64 Data URL格式
                                     try:
                                         image_data = base64.b64decode(output.split(',')[1])
                                         image = Image.open(BytesIO(image_data))
                                         images.append(image)
-                                        print(f"✅ 成功解码图像 {i+1}: {image.size}")
+                                        logger.info("✅ 成功解码图像 %s: %s", i+1, image.size)
                                     except Exception as e:
-                                        print(f"❌ 图像解码失败: {e}")
+                                        logger.error("❌ 图像解码失败: %s", e)
                             elif isinstance(output, dict) and "url" in output:
                                 # 嵌套的URL格式
                                 try:
@@ -214,51 +217,51 @@ class NanoBananaAPI:
                                     if img_response.status_code == 200:
                                         image = Image.open(BytesIO(img_response.content))
                                         images.append(image)
-                                        print(f"✅ 成功下载图像 {i+1}: {image.size}")
+                                        logger.info("✅ 成功下载图像 %s: %s", i+1, image.size)
                                 except Exception as e:
-                                    print(f"❌ 图像下载失败: {e}")
+                                    logger.error("❌ 图像下载失败: %s", e)
                         
                         # 如果需要轮询任务状态
                         elif "taskId" in task_data or "recordId" in task_data:
                             task_id = task_data.get("taskId") or task_data.get("recordId")
-                            print(f"🔄 任务ID: {task_id}, 轮询任务状态...")
+                            logger.debug("🔄 任务ID: %s, 轮询任务状态...", task_id)
 
                             result_urls = self._poll_task_result(task_id)
                             if result_urls:
                                 for url in result_urls:
                                     images.append(url)
-                                    print(f"✅ 成功获取图像URL {i+1}: {url}")
+                                    logger.info("✅ 成功获取图像URL %s: %s", i+1, url)
                 elif response.status_code == 401:
-                    print(f"❌ 认证失败: API密钥无效或没有权限")
-                    print(f"详细信息: {response.text}")
+                    logger.error("❌ 认证失败: API密钥无效或没有权限")
+                    logger.debug("详细信息: %s", response.text)
                     break
                 elif response.status_code == 400:
-                    print(f"❌ 请求参数错误: {response.text}")
+                    logger.error("❌ 请求参数错误: %s", response.text)
                     break
                 else:
-                    print(f"❌ API请求失败: {response.status_code}")
-                    print(f"详细信息: {response.text}")
+                    logger.error("❌ API请求失败: %s", response.status_code)
+                    logger.debug("详细信息: %s", response.text)
                     break
             
             return images if images else None
             
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ Nano-Banana图像生成失败: {error_msg}")
+            logger.error("❌ Nano-Banana图像生成失败: %s", error_msg)
             
             # 特殊处理不同类型的错误
             if "unauthorized" in error_msg.lower() or "401" in error_msg:
-                print("💡 解决建议:")
-                print("1. 检查API密钥是否正确")
-                print("2. 确认API密钥是否有权限访问nano-banana服务")
+                logger.info("💡 解决建议:")
+                logger.debug("1. 检查API密钥是否正确")
+                logger.debug("2. 确认API密钥是否有权限访问nano-banana服务")
             elif "quota" in error_msg.lower() or "429" in error_msg:
-                print("💡 配额限制:")
-                print("1. API调用次数已达到限制")
-                print("2. 请等待配额重置或升级账户")
+                logger.info("💡 配额限制:")
+                logger.debug("1. API调用次数已达到限制")
+                logger.debug("2. 请等待配额重置或升级账户")
             elif "timeout" in error_msg.lower():
-                print("💡 网络问题:")
-                print("1. 网络连接超时，请检查网络状况")
-                print("2. 可以尝试重新生成")
+                logger.info("💡 网络问题:")
+                logger.debug("1. 网络连接超时，请检查网络状况")
+                logger.debug("2. 可以尝试重新生成")
             
             return None
     
@@ -285,16 +288,16 @@ class NanoBananaAPI:
             # 使用原始prompt，让API通过image_config处理比例
             enhanced_prompt = prompt
             
-            print(f"🎨 使用Nano-Banana Edit API编辑图像: {enhanced_prompt}")
-            print(f"📥 输入图像: {input_image_url[:100]}..." if len(input_image_url) > 100 else input_image_url)
+            logger.debug("🎨 使用Nano-Banana Edit API编辑图像: %s", enhanced_prompt)
+            logger.debug("📥 输入图像: %s", input_image_url[:100] + "..." if len(input_image_url) > 100 else input_image_url)
             
             if mask_image_url:
-                print(f"🎯 遮罩图像: {mask_image_url[:100]}..." if len(mask_image_url) > 100 else mask_image_url)
+                logger.debug("🎯 遮罩图像: %s", mask_image_url[:100] + "..." if len(mask_image_url) > 100 else mask_image_url)
             
             # 如果是中文指令，尝试简单翻译为英文
             english_prompt = self._translate_to_english(prompt)
             if english_prompt != prompt:
-                print(f"🌐 指令翻译: {prompt} -> {english_prompt}")
+                logger.debug("🌐 指令翻译: %s -> %s", prompt, english_prompt)
             
             # 按照官方示例构建请求数据
             payload = {
@@ -317,7 +320,7 @@ class NanoBananaAPI:
                 "Authorization": f"Bearer {self.api_key}"
             }
             
-            print(f"🚀 正在编辑图像...")
+            logger.debug("🚀 正在编辑图像...")
             
             # 按照官方示例发送请求
             response = requests.post(
@@ -327,18 +330,18 @@ class NanoBananaAPI:
                 timeout=60
             )
             
-            print(f"📊 API响应状态: {response.status_code}")
+            logger.debug("📊 API响应状态: %s", response.status_code)
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ 任务创建成功: {result}")
+                logger.info("✅ 任务创建成功: %s", result)
                 
                 # 首先检查API返回的code字段
                 if result.get("code") != 200:
                     # API返回了错误
                     error_msg = result.get("msg", "未知错误")
                     error_code = result.get("code", "")
-                    print(f"❌ API返回错误: [{error_code}] {error_msg}")
+                    logger.error("❌ API返回错误: [%s] %s", error_code, error_msg)
                     return f"ERROR: [{error_code}] {error_msg}"
                 
                 # 检查任务状态和结果
@@ -353,56 +356,56 @@ class NanoBananaAPI:
                         if isinstance(output, str):
                             if output.startswith('http'):
                                 # URL格式
-                                print(f"✅ 成功获取编辑图像URL: {output}")
+                                logger.info("✅ 成功获取编辑图像URL: %s", output)
                                 return output
                             elif output.startswith('data:image/'):
                                 # Base64 Data URL格式
-                                print(f"✅ 获取到Base64图像数据")
+                                logger.info("✅ 获取到Base64图像数据")
                                 return output
                         elif isinstance(output, dict) and "url" in output:
                             # 嵌套的URL格式
-                            print(f"✅ 成功获取编辑图像URL: {output['url']}")
+                            logger.info("✅ 成功获取编辑图像URL: %s", output['url'])
                             return output["url"]
                     
                     # 如果需要轮询任务状态
                     elif "taskId" in task_data or "recordId" in task_data:
                         task_id = task_data.get("taskId") or task_data.get("recordId")
-                        print(f"🔄 任务ID: {task_id}, 轮询任务状态...")
+                        logger.debug("🔄 任务ID: %s, 轮询任务状态...", task_id)
 
                         result_urls = self._poll_task_result(task_id)
                         if result_urls:
                             image_url = result_urls[0]
-                            print(f"✅ 成功获取编辑图像URL: {image_url}")
+                            logger.info("✅ 成功获取编辑图像URL: %s", image_url)
                             return image_url
 
             elif response.status_code == 401:
-                print(f"❌ 认证失败: API密钥无效或没有权限")
-                print(f"详细信息: {response.text}")
+                logger.error("❌ 认证失败: API密钥无效或没有权限")
+                logger.debug("详细信息: %s", response.text)
             elif response.status_code == 400:
-                print(f"❌ 请求参数错误: {response.text}")
+                logger.error("❌ 请求参数错误: %s", response.text)
             else:
-                print(f"❌ API请求失败: {response.status_code}")
-                print(f"详细信息: {response.text}")
+                logger.error("❌ API请求失败: %s", response.status_code)
+                logger.debug("详细信息: %s", response.text)
             
             return None
             
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ Nano-Banana图像编辑失败: {error_msg}")
+            logger.error("❌ Nano-Banana图像编辑失败: %s", error_msg)
             
             # 特殊处理不同类型的错误
             if "unauthorized" in error_msg.lower() or "401" in error_msg:
-                print("💡 解决建议:")
-                print("1. 检查API密钥是否正确")
-                print("2. 确认API密钥是否有权限访问nano-banana-edit服务")
+                logger.info("💡 解决建议:")
+                logger.debug("1. 检查API密钥是否正确")
+                logger.debug("2. 确认API密钥是否有权限访问nano-banana-edit服务")
             elif "quota" in error_msg.lower() or "429" in error_msg:
-                print("💡 配额限制:")
-                print("1. API调用次数已达到限制")
-                print("2. 请等待配额重置或升级账户")
+                logger.info("💡 配额限制:")
+                logger.debug("1. API调用次数已达到限制")
+                logger.debug("2. 请等待配额重置或升级账户")
             elif "timeout" in error_msg.lower():
-                print("💡 网络问题:")
-                print("1. 网络连接超时，请检查网络状况")
-                print("2. 可以尝试重新编辑")
+                logger.info("💡 网络问题:")
+                logger.debug("1. 网络连接超时，请检查网络状况")
+                logger.debug("2. 可以尝试重新编辑")
             
             return None
 
@@ -436,50 +439,50 @@ class NanoBananaAPI:
 
                 if status_response.status_code == 200:
                     status_result = status_response.json()
-                    print(f"🔄 第{retry+1}次查询，API响应码: {status_result.get('code', 'unknown')}")
+                    logger.debug("🔄 第%s次查询，API响应码: %s", retry+1, status_result.get('code', 'unknown'))
 
                     if status_result.get("code") == 200 and "data" in status_result:
                         data = status_result["data"]
                         current_state = data.get("state", "unknown")
-                        print(f"📋 任务状态: {current_state}")
+                        logger.debug("📋 任务状态: %s", current_state)
 
                         if current_state == "success":
                             if "resultJson" in data and data["resultJson"]:
                                 try:
                                     result_json = json.loads(data["resultJson"])
-                                    print(f"🎯 解析结果: {result_json}")
+                                    logger.debug("🎯 解析结果: %s", result_json)
 
                                     if "resultUrls" in result_json and result_json["resultUrls"]:
                                         return result_json["resultUrls"]
                                     else:
-                                        print("⚠️ resultJson中没有找到resultUrls")
+                                        logger.warning("⚠️ resultJson中没有找到resultUrls")
                                 except json.JSONDecodeError as e:
-                                    print(f"❌ 解析resultJson失败: {e}")
-                                    print(f"原始resultJson: {data.get('resultJson', 'None')}")
+                                    logger.error("❌ 解析resultJson失败: %s", e)
+                                    logger.debug("原始resultJson: %s", data.get('resultJson', 'None'))
                             else:
-                                print("⚠️ 任务成功但没有resultJson")
+                                logger.warning("⚠️ 任务成功但没有resultJson")
                             return None
 
                         elif current_state == "fail":
                             fail_msg = data.get("failMsg", "未知错误")
                             fail_code = data.get("failCode", "")
-                            print(f"❌ 任务失败: [{fail_code}] {fail_msg}")
+                            logger.error("❌ 任务失败: [%s] %s", fail_code, fail_msg)
                             return None
 
                         elif current_state in ["waiting", "processing", "pending", "running", "generating"]:
-                            print(f"⏳ 任务仍在处理中... ({retry+1}/{max_retries})")
+                            logger.debug("⏳ 任务仍在处理中... (%s/%s)", retry+1, max_retries)
                             continue
                         else:
-                            print(f"🔄 未知任务状态: {current_state}")
+                            logger.debug("🔄 未知任务状态: %s", current_state)
                     else:
-                        print(f"❌ API响应错误: 代码={status_result.get('code')}, 消息={status_result.get('message')}")
+                        logger.error("❌ API响应错误: 代码=%s, 消息=%s", status_result.get('code'), status_result.get('message'))
                 else:
-                    print(f"❌ 查询任务状态失败: {status_response.status_code} - {status_response.text[:100]}")
+                    logger.error("❌ 查询任务状态失败: %s - %s", status_response.status_code, status_response.text[:100])
 
             except Exception as e:
-                print(f"❌ 查询异常: {e}")
+                logger.error("❌ 查询异常: %s", e)
 
-        print("⚠️ 任务超时，请稍后手动检查")
+        logger.warning("⚠️ 任务超时，请稍后手动检查")
         return None
 
     def _translate_to_english(self, chinese_prompt: str) -> str:
@@ -549,11 +552,11 @@ class NanoBananaAPI:
             公网文件URL，失败返回None
         """
         try:
-            print(f"📤 Base64上传文件到KIE.ai: {file_path}")
+            logger.debug("📤 Base64上传文件到KIE.ai: %s", file_path)
             
             # 检查文件是否存在
             if not os.path.exists(file_path):
-                print(f"❌ 文件不存在: {file_path}")
+                logger.error("❌ 文件不存在: %s", file_path)
                 return None
             
             # 读取文件并转换为Base64
@@ -569,7 +572,7 @@ class NanoBananaAPI:
                 # 构造data URL格式
                 data_url = f"data:{mime_type};base64,{base64_data}"
                 
-                print(f"📊 Base64数据长度: {len(base64_data)} 字符")
+                logger.debug("📊 Base64数据长度: %s 字符", len(base64_data))
                 
                 # 准备请求数据
                 payload = {
@@ -591,35 +594,35 @@ class NanoBananaAPI:
                     timeout=60
                 )
                 
-                print(f"📊 Base64上传响应状态: {response.status_code}")
+                logger.debug("📊 Base64上传响应状态: %s", response.status_code)
                 
                 if response.status_code == 200:
                     result = response.json()
-                    print(f"✅ Base64上传成功: {result}")
+                    logger.info("✅ Base64上传成功: %s", result)
                     
                     if result.get('success') and result.get('data'):
                         # 根据文档，使用downloadUrl字段
                         download_url = result['data'].get('downloadUrl')
                         if download_url:
-                            print(f"🌐 公网文件URL: {download_url}")
+                            logger.debug("🌐 公网文件URL: %s", download_url)
                             return download_url
                         else:
-                            print(f"❌ 响应中未找到downloadUrl")
+                            logger.error("❌ 响应中未找到downloadUrl")
                             return None
                     else:
-                        print(f"❌ Base64上传失败: {result.get('msg', 'Unknown error')}")
+                        logger.error("❌ Base64上传失败: %s", result.get('msg', 'Unknown error'))
                         return None
                 else:
-                    print(f"❌ Base64上传失败，HTTP状态码: {response.status_code}")
+                    logger.error("❌ Base64上传失败，HTTP状态码: %s", response.status_code)
                     try:
                         error_info = response.json()
-                        print(f"❌ 错误详情: {error_info}")
-                    except:
-                        print(f"❌ 响应内容: {response.text}")
+                        logger.error("❌ 错误详情: %s", error_info)
+                    except (ValueError, KeyError):
+                        logger.error("❌ 响应内容: %s", response.text)
                     return None
                     
         except Exception as e:
-            print(f"❌ Base64上传异常: {e}")
+            logger.error("❌ Base64上传异常: %s", e)
             return None
     
     def test_connection(self) -> bool:
@@ -632,7 +635,7 @@ class NanoBananaAPI:
         try:
             test_response = self.generate_content("你好")
             return test_response is not None
-        except:
+        except Exception:
             return False
 
 

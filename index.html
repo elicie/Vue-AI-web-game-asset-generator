@@ -2120,7 +2120,7 @@
                                 imageUrl, // 原始URL
                                 `${API_BASE}${imageUrl}`, // 添加API_BASE前缀
                                 imageUrl.replace('/uploads/', `${API_BASE}/uploads/`), // 替换uploads路径
-                                `http://localhost:8000${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}` // 明确的localhost URL
+                                `${API_BASE}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}` // 使用API_BASE构建URL
                             ];
                             
                             let success = false;

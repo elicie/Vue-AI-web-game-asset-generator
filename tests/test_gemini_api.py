@@ -5,6 +5,8 @@ Covers:
   - S2: Duplicated ratio_mapping extracted to class-level RATIO_MAPPING constant
   - S2: Duplicated polling loop extracted to shared _poll_task_result method
   - S9: sys.path.append('..') removed from backend.py
+  - S11: print() replaced with logging module
+  - S12: bare except: replaced with specific exception types
 """
 
 import json
@@ -295,19 +297,13 @@ class TestBrushFunctionsLogic:
 class TestTopLevelImports:
     """Verify inline imports have been moved to top-level in backend.py."""
 
-    def test_no_inline_shutil_import(self):
-        """shutil should be imported at module level, not inline."""
+    def test_no_shutil_import_anywhere(self):
+        """shutil is unused and should not be imported at all."""
         backend_path = os.path.join(REPO_ROOT, "backend.py")
-        lines = open(backend_path, encoding="utf-8").readlines()
-        for i, line in enumerate(lines):
-            # Skip the top-level import area (first 35 lines)
-            if i < 35 and "import shutil" in line:
-                continue  # top-level import is fine
-            stripped = line.strip()
-            if stripped.startswith("import shutil"):
-                pytest.fail(
-                    f"Inline 'import shutil' found at line {i+1} in backend.py"
-                )
+        content = open(backend_path, encoding="utf-8").read()
+        assert "import shutil" not in content, (
+            "shutil is unused in backend.py and should be removed entirely"
+        )
 
     def test_no_inline_fastapi_response_import(self):
         """Response and StreamingResponse should be imported at module level."""
@@ -329,12 +325,12 @@ class TestTopLevelImports:
                     f"Inline fastapi.responses import found at line {i+1} in backend.py"
                 )
 
-    def test_shutil_top_level_import(self):
-        """shutil should be in the top-level imports of backend.py."""
+    def test_no_unused_sys_import(self):
+        """sys should not be imported in backend.py if no longer used."""
         backend_path = os.path.join(REPO_ROOT, "backend.py")
-        lines = open(backend_path, encoding="utf-8").readlines()[:35]
-        assert any("import shutil" in l for l in lines), (
-            "import shutil not found in top-level imports of backend.py"
+        content = open(backend_path, encoding="utf-8").read()
+        assert "import sys" not in content, (
+            "import sys is unused in backend.py and should be removed"
         )
 
 
@@ -448,4 +444,248 @@ class TestApplyAspectRatio:
         assert "_apply_aspect_ratio" in source
         assert "payload[\"config\"] = {" not in source, (
             "Direct config assignment in edit should use _apply_aspect_ratio"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S11: print() replaced with logging in backend.py and gemini_api.py
+# ---------------------------------------------------------------------------
+class TestLoggingMigration:
+    """Verify print() calls have been replaced with proper logging."""
+
+    def test_no_print_in_backend(self):
+        """backend.py should have zero print() calls."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "print(" not in content, (
+            "print() calls still present in backend.py"
+        )
+
+    def test_no_print_in_gemini_api(self):
+        """gemini_api.py should have zero print() calls."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        assert "print(" not in content, (
+            "print() calls still present in gemini_api.py"
+        )
+
+    def test_logger_import_in_backend(self):
+        """backend.py should import logging and define a logger."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "import logging" in content
+        assert "logger = logging.getLogger(__name__)" in content
+
+    def test_logger_import_in_gemini_api(self):
+        """gemini_api.py should import logging and define a logger."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        assert "import logging" in content
+        assert "logger = logging.getLogger(__name__)" in content
+
+    def test_backend_uses_logger_calls(self):
+        """backend.py should use logger.info/error/debug/warning calls."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "logger.info(" in content
+        assert "logger.error(" in content
+        assert "logger.debug(" in content
+        assert "logger.warning(" in content
+
+    def test_gemini_api_uses_logger_calls(self):
+        """gemini_api.py should use logger.info/error/debug/warning calls."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        assert "logger.info(" in content
+        assert "logger.error(" in content
+        assert "logger.debug(" in content
+
+
+# ---------------------------------------------------------------------------
+# S12: bare except: replaced with specific exception types
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# S8: Unused imports removed from backend.py
+# ---------------------------------------------------------------------------
+class TestUnusedImportsRemoved:
+    """Verify unused imports have been removed from backend.py."""
+
+    def test_no_unused_typing_imports(self):
+        """Dict, Any, Tuple should be removed from backend.py imports."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "from typing import" in content
+        assert "Dict" not in content.split("from typing import")[1].split(")")[0], (
+            "Dict is unused in backend.py"
+        )
+        assert "Any" not in content.split("from typing import")[1].split(")")[0], (
+            "Any is unused in backend.py"
+        )
+        assert "Tuple" not in content.split("from typing import")[1].split(")")[0], (
+            "Tuple is unused in backend.py"
+        )
+
+    def test_no_unused_asyncio_import(self):
+        """asyncio should be removed from backend.py."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "import asyncio" not in content, (
+            "asyncio is unused in backend.py"
+        )
+
+    def test_no_sys_path_append_self(self):
+        """sys.path.append of script dir should be removed (redundant)."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "sys.path.append" not in content, (
+            "Redundant sys.path.append should be removed from backend.py"
+        )
+
+    def test_no_sys_exit_at_import(self):
+        """sys.exit(1) should not be at module level in backend.py."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "sys.exit" not in content, (
+            "sys.exit should not be in backend.py (graceful degradation instead)"
+        )
+
+    def test_no_commented_out_staticfiles(self):
+        """Commented-out StaticFiles references should be removed."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "StaticFiles" not in content, (
+            "Dead StaticFiles references should be removed from backend.py"
+        )
+
+
+class TestImportGracefulDegradation:
+    """Verify graceful handling when gemini_api module is missing."""
+
+    def test_nano_banana_api_fallback_on_missing(self):
+        """If gemini_api import fails, NanoBananaAPI should be set to None."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # Should have a fallback assignment, not sys.exit
+        assert "NanoBananaAPI = None" in content, (
+            "Missing gemini_api should set NanoBananaAPI = None, not sys.exit"
+        )
+
+
+class TestBaseExceptionFix:
+    """Verify except BaseException is replaced with except Exception."""
+
+    def test_no_base_exception_in_backend(self):
+        """backend.py should not use except BaseException."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "except BaseException:" not in content, (
+            "except BaseException should be replaced with except Exception"
+        )
+
+
+class TestUnusedImportsRemovedGemini:
+    """Verify unused imports removed from gemini_api.py."""
+
+    def test_no_unused_any_in_gemini(self):
+        """Any should be removed from gemini_api.py imports."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        assert "from typing import" in content
+        import_line = content.split("from typing import")[1].split(")")[0]
+        assert "Any" not in import_line, (
+            "Any is unused in gemini_api.py"
+        )
+
+    def test_no_unused_union_in_gemini(self):
+        """Union should be removed from gemini_api.py imports."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        import_line = content.split("from typing import")[1].split(")")[0]
+        assert "Union" not in import_line, (
+            "Union is unused in gemini_api.py"
+        )
+    """Verify bare except: clauses have been replaced with specific types."""
+
+    def test_no_bare_except_in_backend(self):
+        """backend.py should not contain bare except: clauses."""
+        import re
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # Match 'except:' at end of line (not 'except Exception:' etc.)
+        bare_excepts = re.findall(r'^\s*except\s*:', content, re.MULTILINE)
+        assert len(bare_excepts) == 0, (
+            f"Found {len(bare_excepts)} bare except: in backend.py"
+        )
+
+    def test_no_bare_except_in_gemini_api(self):
+        """gemini_api.py should not contain bare except: clauses."""
+        import re
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        bare_excepts = re.findall(r'^\s*except\s*:', content, re.MULTILINE)
+        assert len(bare_excepts) == 0, (
+            f"Found {len(bare_excepts)} bare except: in gemini_api.py"
+        )
+
+    def test_backend_temp_cleanup_uses_oserror(self):
+        """Temp file cleanup except in backend.py should use OSError."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # os.unlink cleanup should catch OSError, not bare except
+        assert "except OSError:" in content, (
+            "Temp file cleanup should use except OSError: instead of bare except:"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S13: No hardcoded localhost:8000 in index.html
+# ---------------------------------------------------------------------------
+class TestNoHardcodedLocalhostPort:
+    """Verify no hardcoded localhost:8000 URLs remain in index.html."""
+
+    def test_no_localhost_8000_in_html(self):
+        """index.html should not contain hardcoded http://localhost:8000 URLs."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        assert "localhost:8000" not in content, (
+            "Hardcoded localhost:8000 URL found in index.html — should use API_BASE"
+        )
+
+    def test_api_base_used_in_alternative_urls(self):
+        """Alternative URL construction should use API_BASE variable."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        # Find the alternativeUrls array
+        alt_start = content.find("const alternativeUrls = [")
+        if alt_start == -1:
+            pytest.skip("alternativeUrls array not found — may have been refactored")
+        alt_end = content.find("];", alt_start)
+        alt_block = content[alt_start:alt_end]
+        # Should use API_BASE, not hardcoded localhost
+        assert "API_BASE" in alt_block, (
+            "Alternative URLs should use API_BASE for dynamic URL construction"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S14: backend.py localhost detection should be port-agnostic
+# ---------------------------------------------------------------------------
+class TestLocalhostDetectionPortAgnostic:
+    """Verify backend.py localhost URL detection does not hardcode port 8000."""
+
+    def test_no_localhost_8000_in_backend(self):
+        """backend.py should not hardcode localhost:8000 for URL detection."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert "localhost:8000" not in content, (
+            "Hardcoded localhost:8000 in backend.py — should check 'localhost' without port"
+        )
+
+    def test_localhost_detection_exists_in_backend(self):
+        """backend.py should still detect localhost URLs (port-agnostic)."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # Should detect localhost without hardcoding port
+        assert "'localhost' in " in content or '"localhost" in ' in content, (
+            "Localhost URL detection missing from backend.py"
         )

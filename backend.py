@@ -7,33 +7,29 @@ FastAPI后端 - Nano-Banana AI对话应用
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-# from fastapi.staticfiles import StaticFiles  # 单文件应用暂不需要
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Optional
 from contextlib import asynccontextmanager
 import json
 import uuid
-import asyncio
 from datetime import datetime
+import logging
 import os
-import sys
 import tempfile
 import threading
 from PIL import Image, ImageDraw
 import io
 import base64
 import requests
-import shutil
 
-# 添加当前目录到Python路径，以便导入gemini_api
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+logger = logging.getLogger(__name__)
 
 try:
     from gemini_api import NanoBananaAPI
 except ImportError:
-    print("❌ 无法导入gemini_api模块，请确保文件存在")
-    sys.exit(1)
+    NanoBananaAPI = None  # type: ignore[assignment,misc]
+    logger.critical("❌ 无法导入gemini_api模块，请确保文件存在")
 
 # 全局变量（在 lifespan 中初始化）
 api_client = None
@@ -113,8 +109,8 @@ def init_api():
         # 从config.json读取API密钥
         config_file = "config.json"
         if not os.path.exists(config_file):
-            print("❌ 配置文件 config.json 不存在")
-            print("💡 请复制 config.example.json 为 config.json 并填写您的API密钥")
+            logger.error("❌ 配置文件 config.json 不存在")
+            logger.info("💡 请复制 config.example.json 为 config.json 并填写您的API密钥")
             return False
         
         with open(config_file, 'r', encoding='utf-8') as f:
@@ -128,16 +124,16 @@ def init_api():
             api_key = config.get('api', {}).get('nano_banana_api_key')
         
         if not api_key or api_key == "YOUR_API_KEY_HERE":
-            print("❌ API密钥未配置")
-            print("💡 请在 config.json 中设置 api.nano_banana_api_key")
-            print("💡 或设置环境变量 NANO_BANANA_API_KEY")
+            logger.error("❌ API密钥未配置")
+            logger.info("💡 请在 config.json 中设置 api.nano_banana_api_key")
+            logger.info("💡 或设置环境变量 NANO_BANANA_API_KEY")
             return False
         
         api_client = NanoBananaAPI(api_key=api_key)
-        print("✅ Nano-Banana API初始化成功")
+        logger.info("✅ Nano-Banana API初始化成功")
         return True
     except Exception as e:
-        print(f"❌ API初始化失败: {e}")
+        logger.error("❌ API初始化失败: %s", e)
         return False
 
 # 加载对话历史
@@ -183,10 +179,10 @@ def get_image_resolution(image_url: str, is_startup: bool = False) -> Optional[s
         width, height = image.size
         return f"{width}×{height}"
     except requests.exceptions.RequestException as e:
-        print(f"⚠️ 网络图像分辨率获取失败（跳过）: {type(e).__name__}")
+        logger.warning("⚠️ 网络图像分辨率获取失败（跳过）: %s", type(e).__name__)
         return "网络图像"  # 返回默认值而不是None
     except Exception as e:
-        print(f"⚠️ 获取图像分辨率失败: {e}")
+        logger.warning("⚠️ 获取图像分辨率失败: %s", e)
         return None
 
 def load_conversations():
@@ -259,9 +255,9 @@ def load_conversations():
                     updated_at=timestamp
                 )
                 
-        print(f"✅ 加载了 {len(conversations_db)} 条对话历史")
+        logger.info("✅ 加载了 %d 条对话历史", len(conversations_db))
     except Exception as e:
-        print(f"❌ 加载对话历史失败: {e}")
+        logger.error("❌ 加载对话历史失败: %s", e)
         conversations_db = {}
 
 # 保存对话历史（无锁版本，调用者须持有 _db_lock）
@@ -298,7 +294,7 @@ def _save_conversations_unlocked():
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, history_file)  # atomic on POSIX
-        except BaseException:
+        except Exception:
             # Clean up temp file on failure
             try:
                 os.unlink(tmp_path)
@@ -306,9 +302,9 @@ def _save_conversations_unlocked():
                 pass
             raise
             
-        print(f"✅ 保存了 {len(data)} 条对话历史")
+        logger.info("✅ 保存了 %d 条对话历史", len(data))
     except Exception as e:
-        print(f"❌ 保存对话历史失败: {e}")
+        logger.error("❌ 保存对话历史失败: %s", e)
 
 
 def save_conversations():
@@ -320,19 +316,19 @@ def save_conversations():
 async def connect_websocket(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
-    print(f"🔌 WebSocket连接建立，当前连接数: {len(active_connections)}")
+    logger.info("🔌 WebSocket连接建立，当前连接数: %d", len(active_connections))
 
 def disconnect_websocket(websocket: WebSocket):
     if websocket in active_connections:
         active_connections.remove(websocket)
-    print(f"🔌 WebSocket连接断开，当前连接数: {len(active_connections)}")
+    logger.info("🔌 WebSocket连接断开，当前连接数: %d", len(active_connections))
 
 async def broadcast_message(message: dict):
     """广播消息到所有连接的客户端"""
     for connection in active_connections.copy():
         try:
             await connection.send_text(json.dumps(message, ensure_ascii=False))
-        except:
+        except Exception:
             disconnect_websocket(connection)
 
 # 检测是否为图像生成请求
@@ -432,7 +428,7 @@ async def clean_image(request: dict):
         if not image_url:
             raise HTTPException(status_code=400, detail="缺少图片URL")
         
-        print(f"🖼️ 处理图片清理请求: {image_url}")
+        logger.info("🖼️ 处理图片清理请求: %s", image_url)
         
         # 🔧 优先处理本地文件，避免循环请求
         if image_url.startswith('/uploads/') or (image_url.startswith('http://localhost') and '/uploads/' in image_url):
@@ -451,16 +447,16 @@ async def clean_image(request: dict):
                     
                     # 检查原图尺寸
                     img = Image.open(io.BytesIO(image_data))
-                    print(f"📐 本地图片原始尺寸: {img.width} x {img.height}")
+                    logger.debug("📐 本地图片原始尺寸: %d x %d", img.width, img.height)
                     
                     base64_data = base64.b64encode(image_data).decode('utf-8')
                     # 添加MIME类型前缀
                     clean_base64 = f"data:image/png;base64,{base64_data}"
                     
-                print(f"✅ 本地图片转换成功，大小: {len(clean_base64)} 字符")
+                logger.debug("✅ 本地图片转换成功，大小: %d 字符", len(clean_base64))
                 return {"success": True, "imageData": clean_base64}
             else:
-                print(f"❌ 本地文件不存在: {local_path}")
+                logger.error("❌ 本地文件不存在: %s", local_path)
                 return {"success": False, "error": "本地文件不存在"}
         
         # 如果是网络URL，下载并转换
@@ -469,25 +465,25 @@ async def clean_image(request: dict):
             if response.status_code == 200:
                 # 检查下载图片的尺寸
                 img = Image.open(io.BytesIO(response.content))
-                print(f"📐 网络图片下载尺寸: {img.width} x {img.height}")
+                logger.debug("📐 网络图片下载尺寸: %d x %d", img.width, img.height)
                 
                 base64_data = base64.b64encode(response.content).decode('utf-8')
                 # 检测MIME类型
                 content_type = response.headers.get('content-type', 'image/png')
                 clean_base64 = f"data:{content_type};base64,{base64_data}"
                 
-                print(f"✅ 网络图片下载转换成功，大小: {len(clean_base64)} 字符")
+                logger.debug("✅ 网络图片下载转换成功，大小: %d 字符", len(clean_base64))
                 return {"success": True, "imageData": clean_base64}
             else:
-                print(f"❌ 网络图片下载失败，状态码: {response.status_code}")
+                logger.error("❌ 网络图片下载失败，状态码: %d", response.status_code)
                 return {"success": False, "error": f"图片下载失败: {response.status_code}"}
         
         else:
-            print(f"❌ 不支持的图片URL格式: {image_url}")
+            logger.error("❌ 不支持的图片URL格式: %s", image_url)
             return {"success": False, "error": "不支持的图片URL格式"}
             
     except Exception as e:
-        print(f"❌ 图片清理处理异常: {e}")
+        logger.error("❌ 图片清理处理异常: %s", e)
         return {"success": False, "error": str(e)}
 
 @app.post("/api/upload-image")
@@ -527,7 +523,7 @@ async def upload_image(file: UploadFile = File(...)):
         # 返回文件URL (这里简化处理，实际项目中可能需要配置静态文件服务)
         file_url = f"/uploads/{unique_filename}"
         
-        print(f"📁 文件上传成功: {file.filename} -> {file_path} ({file_size} bytes)")
+        logger.info("📁 文件上传成功: %s -> %s (%d bytes)", file.filename, file_path, file_size)
         
         return {
             "success": True,
@@ -540,7 +536,7 @@ async def upload_image(file: UploadFile = File(...)):
         # 清理失败的上传文件
         if os.path.exists(file_path):
             os.remove(file_path)
-        print(f"❌ 文件上传失败: {e}")
+        logger.error("❌ 文件上传失败: %s", e)
         raise HTTPException(status_code=500, detail="文件上传失败")
 
 @app.get("/uploads/{filename}")
@@ -564,7 +560,7 @@ async def get_uploaded_file(filename: str):
 async def proxy_image(url: str):
     """代理外部图片以避免CORS问题"""
     try:
-        print(f"🔄 代理图片请求: {url}")
+        logger.debug("🔄 代理图片请求: %s", url)
         
         # 验证URL格式
         if not url.startswith(('http://', 'https://')):
@@ -583,7 +579,7 @@ async def proxy_image(url: str):
         if not content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="URL不是图片资源")
         
-        print(f"✅ 图片代理成功，大小: {len(response.content)} bytes")
+        logger.debug("✅ 图片代理成功，大小: %d bytes", len(response.content))
         
         # 返回图片内容
         return Response(
@@ -597,26 +593,26 @@ async def proxy_image(url: str):
         )
         
     except requests.RequestException as e:
-        print(f"❌ 图片代理请求失败: {e}")
+        logger.error("❌ 图片代理请求失败: %s", e)
         raise HTTPException(status_code=500, detail=f"图片代理失败: {str(e)}")
     except Exception as e:
-        print(f"❌ 图片代理处理失败: {e}")
+        logger.error("❌ 图片代理处理失败: %s", e)
         raise HTTPException(status_code=500, detail=f"图片代理处理失败: {str(e)}")
 
 @app.post("/api/merge-canvas")
 async def merge_canvas(request: dict):
     """服务器端Canvas合成，解决前端Canvas污染问题"""
     try:
-        print("🎨 服务器端Canvas合成请求")
+        logger.info("🎨 服务器端Canvas合成请求")
         
         width = request.get('width', 600)
         height = request.get('height', 400)
         background_image_url = request.get('backgroundImageUrl')
         paths = request.get('paths', [])
         
-        print(f"📐 Canvas尺寸: {width}x{height}")
-        print(f"🖼️ 背景图像: {background_image_url}")
-        print(f"🎨 绘制路径数量: {len(paths)}")
+        logger.debug("📐 Canvas尺寸: %dx%d", width, height)
+        logger.debug("🖼️ 背景图像: %s", background_image_url)
+        logger.debug("🎨 绘制路径数量: %d", len(paths))
         
         # 使用PIL创建合成图像
         
@@ -628,20 +624,20 @@ async def merge_canvas(request: dict):
                 if '/uploads/' in background_image_url:
                     file_path = background_image_url.split('/uploads/')[-1]
                     local_path = f"./uploads/{file_path}"
-                    print(f"🔄 本地服务器URL转换为文件路径: {local_path}")
+                    logger.debug("🔄 本地服务器URL转换为文件路径: %s", local_path)
                     background_img = Image.open(local_path)
                 else:
-                    print(f"⚠️ 无法解析本地URL: {background_image_url}")
+                    logger.warning("⚠️ 无法解析本地URL: %s", background_image_url)
                     background_img = Image.new('RGB', (width, height), 'white')
             elif background_image_url.startswith('http'):
                 # 外部URL - 下载
-                print(f"🌐 下载外部图像: {background_image_url}")
+                logger.debug("🌐 下载外部图像: %s", background_image_url)
                 response = requests.get(background_image_url, timeout=30)
                 background_img = Image.open(io.BytesIO(response.content))
             else:
                 # 本地文件路径
                 local_path = f".{background_image_url}" if background_image_url.startswith('/') else background_image_url
-                print(f"📁 加载本地文件: {local_path}")
+                logger.debug("📁 加载本地文件: %s", local_path)
                 background_img = Image.open(local_path)
             
             # 调整尺寸
@@ -699,7 +695,7 @@ async def merge_canvas(request: dict):
         base64_data = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
         result_data = f"data:image/png;base64,{base64_data}"
         
-        print("✅ 服务器端Canvas合成完成")
+        logger.info("✅ 服务器端Canvas合成完成")
         
         return {
             "success": True,
@@ -707,7 +703,7 @@ async def merge_canvas(request: dict):
         }
         
     except Exception as e:
-        print(f"❌ 服务器端Canvas合成失败: {e}")
+        logger.error("❌ 服务器端Canvas合成失败: %s", e)
         return {
             "success": False,
             "error": str(e)
@@ -744,7 +740,7 @@ async def download_image_proxy(image_url: str):
         )
         
     except Exception as e:
-        print(f"❌ 代理下载失败: {e}")
+        logger.error("❌ 代理下载失败: %s", e)
         raise HTTPException(status_code=500, detail=f"下载失败: {str(e)}")
 
 @app.post("/api/chat")
@@ -781,15 +777,15 @@ async def chat(request: ChatRequest):
         # 处理AI回复
         if request.model_type == "edit" and request.input_image_url:
             # 图像编辑模式
-            print(f"✏️ 处理图像编辑请求: {request.message}")
-            print(f"📥 输入图像: {request.input_image_url}")
+            logger.info("✏️ 处理图像编辑请求: %s", request.message)
+            logger.debug("📥 输入图像: %s", request.input_image_url)
             
             # 🎯 检查是否有遮罩数据
             if request.mask_image_url:
-                print(f"🎯 检测到遮罩数据，将进行局部编辑")
-                print(f"🎯 遮罩图像: {request.mask_image_url[:100]}..." if len(request.mask_image_url) > 100 else request.mask_image_url)
+                logger.info("🎯 检测到遮罩数据，将进行局部编辑")
+                logger.debug("🎯 遮罩图像: %s", request.mask_image_url[:100] + "..." if len(request.mask_image_url) > 100 else request.mask_image_url)
             else:
-                print(f"🎯 无遮罩数据，将进行全图编辑")
+                logger.debug("🎯 无遮罩数据，将进行全图编辑")
             
             # 智能处理输入图像
             input_image_data = request.input_image_url
@@ -797,40 +793,40 @@ async def chat(request: ChatRequest):
             if input_image_data.startswith('/uploads/'):
                 # 本地上传文件 - 上传到KIE.ai公网服务
                 local_file_path = f".{input_image_data}"  # 转换为相对路径 ./uploads/xxx.png
-                print(f"🔄 处理本地上传文件: {local_file_path}")
+                logger.debug("🔄 处理本地上传文件: %s", local_file_path)
                 
                 # 使用KIE.ai文件上传服务
                 public_url = api_client.upload_file_to_kie(local_file_path)
                 if public_url:
                     input_image_data = public_url
-                    print(f"✅ 成功上传图像到公网: {public_url}")
+                    logger.info("✅ 成功上传图像到公网: %s", public_url)
                 else:
-                    print(f"❌ 上传图像到公网失败")
+                    logger.error("❌ 上传图像到公网失败")
                     input_image_data = None
                     
             elif input_image_data.startswith(('http://', 'https://')):
                 # 网络图像URL - 检查是否为本地服务器
-                if ('localhost:8000' in input_image_data or '127.0.0.1' in input_image_data) and '/uploads/' in input_image_data:
+                if ('localhost' in input_image_data or '127.0.0.1' in input_image_data) and '/uploads/' in input_image_data:
                     # 本地服务器URL - 需要上传到公网
                     file_path = input_image_data.split('/uploads/')[-1]
                     local_file_path = f"./uploads/{file_path}"
-                    print(f"🔄 检测到本地服务器URL，上传到公网: {local_file_path}")
+                    logger.debug("🔄 检测到本地服务器URL，上传到公网: %s", local_file_path)
                     
                     # 使用KIE.ai文件上传服务
                     public_url = api_client.upload_file_to_kie(local_file_path)
                     if public_url:
                         input_image_data = public_url
-                        print(f"✅ 成功上传图像到公网: {public_url}")
+                        logger.info("✅ 成功上传图像到公网: %s", public_url)
                     else:
-                        print(f"❌ 上传图像到公网失败")
+                        logger.error("❌ 上传图像到公网失败")
                         input_image_data = None
                 else:
                     # 真正的网络图像URL - 直接使用
-                    print(f"🌐 使用网络图像URL: {input_image_data}")
+                    logger.debug("🌐 使用网络图像URL: %s", input_image_data)
                 
             elif input_image_data.startswith('data:image/'):
                 # Base64图像数据 - 保存为临时文件并上传
-                print(f"🎨 处理Base64图像数据")
+                logger.debug("🎨 处理Base64图像数据")
                 try:
                     # 解析Base64数据
                     header, data = input_image_data.split(',', 1)
@@ -838,48 +834,48 @@ async def chat(request: ChatRequest):
                     
                     # 检查图片尺寸
                     img = Image.open(io.BytesIO(image_data))
-                    print(f"📐 接收到的Base64图片尺寸: {img.width} x {img.height}")
+                    logger.debug("📐 接收到的Base64图片尺寸: %d x %d", img.width, img.height)
                     
                     # 创建临时文件
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
                         temp_file.write(image_data)
                         temp_path = temp_file.name
                     
-                    print(f"📝 Base64图像已保存到临时文件: {temp_path}")
+                    logger.debug("📝 Base64图像已保存到临时文件: %s", temp_path)
                     
                     # 上传到KIE.ai公网服务
                     public_url = api_client.upload_file_to_kie(temp_path)
                     if public_url:
                         input_image_data = public_url
-                        print(f"✅ 成功上传Base64图像到公网: {public_url}")
+                        logger.info("✅ 成功上传Base64图像到公网: %s", public_url)
                     else:
-                        print(f"❌ 上传Base64图像到公网失败")
+                        logger.error("❌ 上传Base64图像到公网失败")
                         input_image_data = None
                     
                     # 清理临时文件
                     try:
                         os.unlink(temp_path)
-                    except:
+                    except OSError:
                         pass
                         
                 except Exception as e:
-                    print(f"❌ 处理Base64图像数据失败: {e}")
+                    logger.error("❌ 处理Base64图像数据失败: %s", e)
                     input_image_data = None
                 
             else:
-                print(f"⚠️ 未知图像格式: {input_image_data[:100]}...")
+                logger.warning("⚠️ 未知图像格式: %s", input_image_data[:100] + "...")
                 # 尝试作为本地文件路径处理
                 if os.path.exists(input_image_data):
                     # 如果是本地文件，上传到KIE.ai
                     public_url = api_client.upload_file_to_kie(input_image_data)
                     if public_url:
                         input_image_data = public_url
-                        print(f"✅ 将本地文件上传到公网: {public_url}")
+                        logger.info("✅ 将本地文件上传到公网: %s", public_url)
                     else:
-                        print(f"❌ 上传本地文件到公网失败")
+                        logger.error("❌ 上传本地文件到公网失败")
                         input_image_data = None
                 else:
-                    print(f"❌ 无法处理图像: 文件不存在或格式不支持")
+                    logger.error("❌ 无法处理图像: 文件不存在或格式不支持")
                     input_image_data = None
             
             # 如果图像处理失败，返回错误
@@ -902,7 +898,7 @@ async def chat(request: ChatRequest):
                 # 🎯 处理遮罩数据
                 mask_data = None
                 if request.mask_image_url:
-                    print(f"🎯 处理遮罩图像: {request.mask_image_url[:100]}...")
+                    logger.debug("🎯 处理遮罩图像: %s", request.mask_image_url[:100] + "...")
                     
                     # 上传遮罩图像到公网（如果需要）
                     if request.mask_image_url.startswith('data:image/'):
@@ -917,24 +913,24 @@ async def chat(request: ChatRequest):
                                 temp_file.write(mask_image_data)
                                 temp_path = temp_file.name
                             
-                            print(f"📝 遮罩Base64数据已保存到临时文件: {temp_path}")
+                            logger.debug("📝 遮罩Base64数据已保存到临时文件: %s", temp_path)
                             
                             # 上传到KIE.ai公网服务
                             public_mask_url = api_client.upload_file_to_kie(temp_path)
                             if public_mask_url:
                                 mask_data = public_mask_url
-                                print(f"✅ 成功上传遮罩到公网: {public_mask_url}")
+                                logger.info("✅ 成功上传遮罩到公网: %s", public_mask_url)
                             else:
-                                print(f"❌ 上传遮罩到公网失败")
+                                logger.error("❌ 上传遮罩到公网失败")
                             
                             # 清理临时文件
                             try:
                                 os.unlink(temp_path)
-                            except:
+                            except OSError:
                                 pass
                                 
                         except Exception as e:
-                            print(f"❌ 处理遮罩Base64数据失败: {e}")
+                            logger.error("❌ 处理遮罩Base64数据失败: %s", e)
                     else:
                         mask_data = request.mask_image_url
                 
@@ -1005,7 +1001,7 @@ async def chat(request: ChatRequest):
                 
         elif is_image_generation_request(request.message):
             # 图像生成模式
-            print(f"🎨 处理图像生成请求: {request.message}")
+            logger.info("🎨 处理图像生成请求: %s", request.message)
             image_url = api_client.generate_image_with_nano_banana(
                 request.message, 
                 num_images=1,
@@ -1055,7 +1051,7 @@ async def chat(request: ChatRequest):
                 )
         else:
             # 文本对话
-            print(f"💬 处理文本对话: {request.message}")
+            logger.info("💬 处理文本对话: %s", request.message)
             ai_response = api_client.generate_content(request.message)
             
             ai_message = Message(
@@ -1081,7 +1077,7 @@ async def chat(request: ChatRequest):
         return response
         
     except Exception as e:
-        print(f"❌ 聊天处理错误: {e}")
+        logger.error("❌ 聊天处理错误: %s", e)
         raise HTTPException(status_code=500, detail=f"处理请求时发生错误: {str(e)}")
 
 # WebSocket端点
@@ -1093,21 +1089,18 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             # 这里可以处理WebSocket消息
             message = json.loads(data)
-            print(f"📨 收到WebSocket消息: {message}")
+            logger.debug("📨 收到WebSocket消息: %s", message)
             
     except WebSocketDisconnect:
         disconnect_websocket(websocket)
 
 # 启动时初始化
 def startup_init():
-    print("🚀 启动Nano-Banana Vue + FastAPI应用...")
+    logger.info("🚀 启动Nano-Banana Vue + FastAPI应用...")
     if not init_api():
-        print("❌ API初始化失败，应用可能无法正常工作")
+        logger.error("❌ API初始化失败，应用可能无法正常工作")
     load_conversations()
-    print("✅ 应用启动完成！")
-
-# 静态文件（Vue构建后的文件）
-# app.mount("/static", StaticFiles(directory="dist"), name="static")  # 单文件应用暂不需要
+    logger.info("✅ 应用启动完成！")
 
 if __name__ == "__main__":
     import uvicorn
