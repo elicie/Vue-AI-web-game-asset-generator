@@ -689,3 +689,118 @@ class TestLocalhostDetectionPortAgnostic:
         assert "'localhost' in " in content or '"localhost" in ' in content, (
             "Localhost URL detection missing from backend.py"
         )
+
+
+# ---------------------------------------------------------------------------
+# S15: .env.example references correct env var names
+# ---------------------------------------------------------------------------
+class TestEnvExampleCorrectness:
+    """Verify .env.example uses the actual env var names read by the code."""
+
+    def test_env_example_references_nano_banana_key(self):
+        """GEMINI_API_KEY was the old name; code uses NANO_BANANA_API_KEY."""
+        env_path = os.path.join(REPO_ROOT, ".env.example")
+        content = open(env_path, encoding="utf-8").read()
+        assert "NANO_BANANA_API_KEY" in content, (
+            ".env.example should reference NANO_BANANA_API_KEY (the actual env var used by backend.py)"
+        )
+
+    def test_env_example_no_gemini_key(self):
+        """GEMINI_API_KEY should not appear since backend.py uses NANO_BANANA_API_KEY."""
+        env_path = os.path.join(REPO_ROOT, ".env.example")
+        content = open(env_path, encoding="utf-8").read()
+        assert "GEMINI_API_KEY" not in content, (
+            ".env.example should not reference GEMINI_API_KEY (backend.py uses NANO_BANANA_API_KEY)"
+        )
+
+    def test_env_example_has_port_var(self):
+        """PORT env var should be documented since backend.py reads it."""
+        env_path = os.path.join(REPO_ROOT, ".env.example")
+        content = open(env_path, encoding="utf-8").read()
+        assert "PORT=" in content, (
+            ".env.example should document the PORT env var"
+        )
+
+    def test_env_example_has_host_var(self):
+        """HOST env var should be documented since backend.py reads it."""
+        env_path = os.path.join(REPO_ROOT, ".env.example")
+        content = open(env_path, encoding="utf-8").read()
+        assert "HOST=" in content, (
+            ".env.example should document the HOST env var"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S16: backend.py port/host configurable via env vars
+# ---------------------------------------------------------------------------
+class TestConfigurablePort:
+    """Verify port and host are configurable via env vars."""
+
+    def test_backend_main_uses_host_env(self):
+        """backend.py __main__ block should read HOST from env."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert 'os.getenv("HOST"' in content or "os.getenv('HOST'" in content, (
+            "backend.py should read HOST from environment variable"
+        )
+
+    def test_backend_main_uses_port_env(self):
+        """backend.py __main__ block should read PORT from env."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert 'os.getenv("PORT"' in content or "os.getenv('PORT'" in content, (
+            "backend.py should read PORT from environment variable"
+        )
+
+    def test_run_py_uses_port_env(self):
+        """run.py should read PORT from env."""
+        run_path = os.path.join(REPO_ROOT, "run.py")
+        content = open(run_path, encoding="utf-8").read()
+        assert 'os.getenv("PORT"' in content or "os.getenv('PORT'" in content, (
+            "run.py should read PORT from environment variable"
+        )
+
+    def test_run_py_uses_host_env(self):
+        """run.py should read HOST from env."""
+        run_path = os.path.join(REPO_ROOT, "run.py")
+        content = open(run_path, encoding="utf-8").read()
+        assert 'os.getenv("HOST"' in content or "os.getenv('HOST'" in content, (
+            "run.py should read HOST from environment variable"
+        )
+
+    def test_run_py_no_hardcoded_8000(self):
+        """run.py should not have hardcoded port 8000 in url strings."""
+        run_path = os.path.join(REPO_ROOT, "run.py")
+        content = open(run_path, encoding="utf-8").read()
+        lines = content.split('\n')
+        for i, line in enumerate(lines, 1):
+            if 'localhost:8000' in line:
+                pytest.fail(f"run.py line {i} still has hardcoded localhost:8000")
+
+
+# ---------------------------------------------------------------------------
+# S18: config.example.json matches actual backend usage
+# ---------------------------------------------------------------------------
+class TestConfigExampleClean:
+    """Verify config.example.json only contains fields the backend actually uses."""
+
+    def test_config_example_has_api_key(self):
+        """config.example.json should contain the nano_banana_api_key field."""
+        config_path = os.path.join(REPO_ROOT, "config.example.json")
+        with open(config_path, encoding="utf-8") as f:
+            config = json.load(f)
+        assert "api" in config, "config.example.json should have 'api' section"
+        assert "nano_banana_api_key" in config["api"], (
+            "config.example.json should have api.nano_banana_api_key"
+        )
+
+    def test_config_example_no_unused_sections(self):
+        """config.example.json should not contain sections the backend doesn't read."""
+        config_path = os.path.join(REPO_ROOT, "config.example.json")
+        with open(config_path, encoding="utf-8") as f:
+            config = json.load(f)
+        unused = {"model", "server", "generation", "ui"} & set(config.keys())
+        assert not unused, (
+            f"config.example.json has unused sections: {unused}. "
+            f"Backend only reads 'api' section."
+        )
