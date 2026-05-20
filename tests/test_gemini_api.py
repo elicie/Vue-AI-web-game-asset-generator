@@ -804,3 +804,230 @@ class TestConfigExampleClean:
             f"config.example.json has unused sections: {unused}. "
             f"Backend only reads 'api' section."
         )
+
+
+# ---------------------------------------------------------------------------
+# Helper functions for source-code inspection
+# ---------------------------------------------------------------------------
+def _read(filename: str) -> str:
+    """Read a file from the repo root."""
+    path = os.path.join(REPO_ROOT, filename)
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _extract_method(source: str, method_name: str) -> str:
+    """Extract the body of a def method_name(...) from source code.
+    
+    Returns the source from 'def method_name' to the next top-level def or EOF.
+    """
+    marker = f"def {method_name}("
+    start = source.find(marker)
+    if start == -1:
+        return ""
+    # Find next top-level 'def ' after the method start
+    next_def = source.find("\ndef ", start + len(marker))
+    if next_def == -1:
+        return source[start:]
+    # Ensure it's at indent level 0 (top-level or class-level)
+    # We look for \n    def (class method) or \ndef (top-level)
+    return source[start:next_def + 1]
+
+
+# ---------------------------------------------------------------------------
+# S19: generate_image_with_nano_banana returns URL strings (not Image objects)
+# ---------------------------------------------------------------------------
+class TestGenerateReturnsURLs:
+    """Verify generate_image_with_nano_banana returns Optional[List[str]], not Image objects."""
+
+    def test_generate_return_type_annotation_is_str_list(self):
+        """Return annotation should be Optional[List[str]]."""
+        import inspect
+        from gemini_api import NanoBananaAPI
+        sig = inspect.signature(NanoBananaAPI.generate_image_with_nano_banana)
+        ret = sig.return_annotation
+        assert ret is not inspect.Parameter.empty, "Return annotation missing"
+        # The annotation string should contain 'str' not 'Image'
+        ret_str = str(ret)
+        assert "str" in ret_str, f"Return type should include str, got: {ret_str}"
+        assert "Image" not in ret_str, f"Return type should not include Image, got: {ret_str}"
+
+    def test_no_image_download_in_generate(self):
+        """generate_image_with_nano_banana should not download images (no requests.get)."""
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "generate_image_with_nano_banana")
+        assert "Image.open" not in fn_body, (
+            "generate method should not call Image.open (returns URLs only)"
+        )
+        assert "BytesIO" not in fn_body, (
+            "generate method should not use BytesIO (returns URLs only)"
+        )
+
+    def test_generate_appends_urls_only(self):
+        """generate method should append URL strings, not Image objects."""
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "generate_image_with_nano_banana")
+        assert "images.append(image)" not in fn_body, (
+            "Should append URL strings, not 'image' Image objects"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S20: Shared _extract_output_url helper deduplicates response processing
+# ---------------------------------------------------------------------------
+class TestExtractOutputUrl:
+    """Verify _extract_output_url handles all API output formats."""
+
+    def test_extract_output_url_exists(self):
+        from gemini_api import NanoBananaAPI
+        assert hasattr(NanoBananaAPI, "_extract_output_url"), (
+            "NanoBananaAPI should have _extract_output_url static method"
+        )
+
+    def test_extract_http_url(self):
+        from gemini_api import NanoBananaAPI
+        result = NanoBananaAPI._extract_output_url("https://example.com/img.png")
+        assert result == "https://example.com/img.png"
+
+    def test_extract_data_url(self):
+        from gemini_api import NanoBananaAPI
+        data_url = "data:image/png;base64,iVBOR"
+        result = NanoBananaAPI._extract_output_url(data_url)
+        assert result == data_url
+
+    def test_extract_dict_with_url(self):
+        from gemini_api import NanoBananaAPI
+        result = NanoBananaAPI._extract_output_url({"url": "https://example.com/out.png"})
+        assert result == "https://example.com/out.png"
+
+    def test_extract_returns_none_for_unrecognized(self):
+        from gemini_api import NanoBananaAPI
+        assert NanoBananaAPI._extract_output_url(42) is None
+        assert NanoBananaAPI._extract_output_url("not-a-url") is None
+        assert NanoBananaAPI._extract_output_url({"no_url": "x"}) is None
+
+    def test_generate_uses_extract_output_url(self):
+        """generate method should use _extract_output_url for output processing."""
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "generate_image_with_nano_banana")
+        assert "_extract_output_url" in fn_body, (
+            "generate method should call _extract_output_url"
+        )
+        assert "isinstance(output, str)" not in fn_body, (
+            "generate method should not have manual isinstance output format checking"
+        )
+
+    def test_edit_uses_extract_output_url(self):
+        """edit method should use _extract_output_url for output processing."""
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "edit_image_with_nano_banana")
+        assert "_extract_output_url" in fn_body, (
+            "edit method should call _extract_output_url"
+        )
+        assert "isinstance(output, str)" not in fn_body, (
+            "edit method should not have manual isinstance output format checking"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S21: enhance_image_prompt removed (was dead code)
+# ---------------------------------------------------------------------------
+class TestEnhancePromptRemoved:
+    """Verify enhance_image_prompt has been removed from NanoBananaAPI."""
+
+    def test_no_enhance_image_prompt_in_gemini_api(self):
+        source = _read("gemini_api.py")
+        assert "enhance_image_prompt" not in source, (
+            "enhance_image_prompt should be removed from gemini_api.py (dead code)"
+        )
+
+    def test_no_enhance_image_prompt_in_backend(self):
+        source = _read("backend.py")
+        assert "enhance_image_prompt" not in source, (
+            "enhance_image_prompt should not be referenced in backend.py"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S22: Shared _log_error_advice deduplicates error advice blocks
+# ---------------------------------------------------------------------------
+class TestLogErrorAdvice:
+    """Verify _log_error_advice exists and both methods use it."""
+
+    def test_log_error_advice_exists(self):
+        from gemini_api import NanoBananaAPI
+        assert hasattr(NanoBananaAPI, "_log_error_advice"), (
+            "NanoBananaAPI should have _log_error_advice static method"
+        )
+
+    def test_generate_uses_log_error_advice(self):
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "generate_image_with_nano_banana")
+        assert "_log_error_advice" in fn_body, (
+            "generate method should call _log_error_advice instead of inline error advice"
+        )
+
+    def test_edit_uses_log_error_advice(self):
+        source = _read("gemini_api.py")
+        fn_body = _extract_method(source, "edit_image_with_nano_banana")
+        assert "_log_error_advice" in fn_body, (
+            "edit method should call _log_error_advice instead of inline error advice"
+        )
+
+    def test_no_duplicated_error_advice_blocks(self):
+        """Error advice should appear exactly once (in _log_error_advice)."""
+        source = _read("gemini_api.py")
+        # Count occurrences of the advice pattern
+        count = source.count("解决建议")
+        assert count == 1, (
+            f"'解决建议' should appear exactly once (in _log_error_advice), found {count}"
+        )
+        count2 = source.count("配额限制")
+        assert count2 == 1, (
+            f"'配额限制' should appear exactly once (in _log_error_advice), found {count2}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S23: Unused PIL/BytesIO imports removed from gemini_api.py
+# ---------------------------------------------------------------------------
+class TestUnusedPILRemoved:
+    """Verify PIL and BytesIO are no longer imported in gemini_api.py."""
+
+    def test_no_pil_import_in_gemini_api(self):
+        source = _read("gemini_api.py")
+        assert "from PIL" not in source, (
+            "PIL import should be removed from gemini_api.py (no longer used)"
+        )
+
+    def test_no_bytesio_import_in_gemini_api(self):
+        source = _read("gemini_api.py")
+        assert "from io import BytesIO" not in source, (
+            "BytesIO import should be removed from gemini_api.py (no longer used)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# MockAPI: generate returns URL strings
+# ---------------------------------------------------------------------------
+class TestMockAPIReturnsURLs:
+    """Verify MockGeminiAPI.generate_image_with_nano_banana returns List[str]."""
+
+    def test_mock_generate_returns_str_list(self):
+        from tests.mock_api import MockGeminiAPI
+        mock = MockGeminiAPI(api_key="test")
+        result = mock.generate_image_with_nano_banana("a cat")
+        assert isinstance(result, list), "Should return a list"
+        assert len(result) == 1, "Should return 1 result"
+        assert isinstance(result[0], str), (
+            f"Each result should be a URL string, got {type(result[0])}"
+        )
+        assert result[0].startswith("https://"), (
+            f"URL should start with https://, got {result[0]}"
+        )
+
+    def test_mock_generate_respects_num_images(self):
+        from tests.mock_api import MockGeminiAPI
+        mock = MockGeminiAPI(api_key="test")
+        result = mock.generate_image_with_nano_banana("a cat", num_images=3)
+        assert len(result) == 3, f"Should return 3 results, got {len(result)}"

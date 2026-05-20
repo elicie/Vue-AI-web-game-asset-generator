@@ -11,8 +11,6 @@ import base64
 import mimetypes
 import logging
 from typing import Optional, Dict, List
-from PIL import Image
-from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -89,33 +87,39 @@ class NanoBananaAPI:
         else:
             return f"🍌 你好！我是Nano-Banana AI，主要擅长图像生成。您的问题是：{text}。如果您需要生成图像，请直接描述您想要的内容！"
     
-    def enhance_image_prompt(self, user_input: str) -> str:
-        """
-        使用Gemini优化图像生成提示词
-        
-        Args:
-            user_input: 用户原始输入
-            
-        Returns:
-            优化后的提示词
-        """
-        enhancement_prompt = f"""
-请将以下用户描述转换为更详细、更适合AI图像生成的英文提示词。要求：
-1. 保持原意，但添加更多视觉细节
-2. 使用适合AI图像生成的描述风格
-3. 包含质量词汇如"high quality", "detailed", "beautiful"
-4. 直接返回优化后的英文提示词，不要额外解释
+    @staticmethod
+    def _extract_output_url(output) -> Optional[str]:
+        """Extract a URL string from various API output formats.
 
-用户描述：{user_input}
-"""
-        
-        enhanced = self.generate_content(enhancement_prompt)
-        return enhanced if enhanced else user_input
-    
+        The upstream API may return the image as:
+          - a bare HTTP URL string
+          - a data:image/... base64 data-URL string
+          - a dict {"url": "..."}
+
+        Returns the URL/data-URL string, or None if the format is unrecognized.
+        """
+        if isinstance(output, str):
+            if output.startswith('http') or output.startswith('data:image/'):
+                return output
+        elif isinstance(output, dict) and "url" in output:
+            return output["url"]
+        return None
+
+    @staticmethod
+    def _log_error_advice(error_msg: str) -> None:
+        """Log contextual advice for common API error patterns."""
+        lower = error_msg.lower()
+        if "unauthorized" in lower or "401" in error_msg:
+            logger.info("💡 解决建议: 检查API密钥是否正确且有权限")
+        elif "quota" in lower or "429" in error_msg:
+            logger.info("💡 配额限制: 请等待配额重置或升级账户")
+        elif "timeout" in lower:
+            logger.info("💡 网络问题: 网络连接超时，请检查网络状况")
+
     def generate_image_with_nano_banana(self, prompt: str, num_images: int = 1, 
                                       output_format: str = "png", 
                                       image_size: str = "auto",
-                                      aspect_ratio: str = "auto") -> Optional[List[Image.Image]]:
+                                      aspect_ratio: str = "auto") -> Optional[List[str]]:
         """
         使用Nano-Banana API生成图像
         
@@ -127,7 +131,7 @@ class NanoBananaAPI:
             aspect_ratio: 图像比例 ("auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5")
             
         Returns:
-            生成的图像列表
+            生成的图像URL列表，失败返回None
         """
         try:
             # 限制图像数量
@@ -181,45 +185,15 @@ class NanoBananaAPI:
                     if "error" in result or "message" in result:
                         logger.warning("⚠️ API可能不支持当前格式: %s", result)
                     
-                    # 检查任务状态和结果
                     if "data" in result:
                         task_data = result["data"]
                         
                         # 如果直接返回了图像结果
                         if "output" in task_data:
-                            output = task_data["output"]
-                            
-                            # 处理不同的输出格式
-                            if isinstance(output, str):
-                                if output.startswith('http'):
-                                    # URL格式
-                                    try:
-                                        img_response = requests.get(output, timeout=30)
-                                        if img_response.status_code == 200:
-                                            image = Image.open(BytesIO(img_response.content))
-                                            images.append(image)
-                                            logger.info("✅ 成功下载图像 %s: %s", i+1, image.size)
-                                    except Exception as e:
-                                        logger.error("❌ 图像下载失败: %s", e)
-                                elif output.startswith('data:image/'):
-                                    # Base64 Data URL格式
-                                    try:
-                                        image_data = base64.b64decode(output.split(',')[1])
-                                        image = Image.open(BytesIO(image_data))
-                                        images.append(image)
-                                        logger.info("✅ 成功解码图像 %s: %s", i+1, image.size)
-                                    except Exception as e:
-                                        logger.error("❌ 图像解码失败: %s", e)
-                            elif isinstance(output, dict) and "url" in output:
-                                # 嵌套的URL格式
-                                try:
-                                    img_response = requests.get(output["url"], timeout=30)
-                                    if img_response.status_code == 200:
-                                        image = Image.open(BytesIO(img_response.content))
-                                        images.append(image)
-                                        logger.info("✅ 成功下载图像 %s: %s", i+1, image.size)
-                                except Exception as e:
-                                    logger.error("❌ 图像下载失败: %s", e)
+                            url = self._extract_output_url(task_data["output"])
+                            if url:
+                                images.append(url)
+                                logger.info("✅ 成功获取图像URL %s", i+1)
                         
                         # 如果需要轮询任务状态
                         elif "taskId" in task_data or "recordId" in task_data:
@@ -249,19 +223,7 @@ class NanoBananaAPI:
             error_msg = str(e)
             logger.error("❌ Nano-Banana图像生成失败: %s", error_msg)
             
-            # 特殊处理不同类型的错误
-            if "unauthorized" in error_msg.lower() or "401" in error_msg:
-                logger.info("💡 解决建议:")
-                logger.debug("1. 检查API密钥是否正确")
-                logger.debug("2. 确认API密钥是否有权限访问nano-banana服务")
-            elif "quota" in error_msg.lower() or "429" in error_msg:
-                logger.info("💡 配额限制:")
-                logger.debug("1. API调用次数已达到限制")
-                logger.debug("2. 请等待配额重置或升级账户")
-            elif "timeout" in error_msg.lower():
-                logger.info("💡 网络问题:")
-                logger.debug("1. 网络连接超时，请检查网络状况")
-                logger.debug("2. 可以尝试重新生成")
+            self._log_error_advice(error_msg)
             
             return None
     
@@ -350,22 +312,10 @@ class NanoBananaAPI:
                     
                     # 如果直接返回了图像结果
                     if "output" in task_data:
-                        output = task_data["output"]
-                        
-                        # 处理不同的输出格式
-                        if isinstance(output, str):
-                            if output.startswith('http'):
-                                # URL格式
-                                logger.info("✅ 成功获取编辑图像URL: %s", output)
-                                return output
-                            elif output.startswith('data:image/'):
-                                # Base64 Data URL格式
-                                logger.info("✅ 获取到Base64图像数据")
-                                return output
-                        elif isinstance(output, dict) and "url" in output:
-                            # 嵌套的URL格式
-                            logger.info("✅ 成功获取编辑图像URL: %s", output['url'])
-                            return output["url"]
+                        url = self._extract_output_url(task_data["output"])
+                        if url:
+                            logger.info("✅ 成功获取编辑图像URL: %s", url)
+                            return url
                     
                     # 如果需要轮询任务状态
                     elif "taskId" in task_data or "recordId" in task_data:
@@ -393,19 +343,7 @@ class NanoBananaAPI:
             error_msg = str(e)
             logger.error("❌ Nano-Banana图像编辑失败: %s", error_msg)
             
-            # 特殊处理不同类型的错误
-            if "unauthorized" in error_msg.lower() or "401" in error_msg:
-                logger.info("💡 解决建议:")
-                logger.debug("1. 检查API密钥是否正确")
-                logger.debug("2. 确认API密钥是否有权限访问nano-banana-edit服务")
-            elif "quota" in error_msg.lower() or "429" in error_msg:
-                logger.info("💡 配额限制:")
-                logger.debug("1. API调用次数已达到限制")
-                logger.debug("2. 请等待配额重置或升级账户")
-            elif "timeout" in error_msg.lower():
-                logger.info("💡 网络问题:")
-                logger.debug("1. 网络连接超时，请检查网络状况")
-                logger.debug("2. 可以尝试重新编辑")
+            self._log_error_advice(error_msg)
             
             return None
 

@@ -53,32 +53,16 @@ class MockGeminiAPI:
     def generate_image_with_nano_banana(self, prompt: str, num_images: int = 1, 
                                        output_format: str = "png", 
                                        image_size: str = "auto",
-                                       aspect_ratio: str = "auto") -> List:
+                                       aspect_ratio: str = "auto") -> List[str]:
         """模拟Nano-Banana图像生成"""
-        from PIL import Image
-        
-        images = []
+        urls = []
         num_images = max(1, min(4, num_images))
         
         for i in range(num_images):
-            width, height = 512, 512
-            img = Image.new('RGB', (width, height))
-            pixels = []
-            
-            base_color = hash(prompt + str(i)) % 256
-            
-            for y in range(height):
-                for x in range(width):
-                    r = (base_color + x // 4) % 256
-                    g = (base_color + y // 4) % 256  
-                    b = (base_color + (x + y) // 8) % 256
-                    pixels.append((r, g, b))
-            
-            img.putdata(pixels)
-            images.append(img)
-            print(f"🍌 模拟Nano-Banana生成图像 {i+1}/{num_images}: {width}x{height}")
+            mock_url = f"https://mock-generate-result.com/gen_{hash(prompt + str(i)) % 10000}.png"
+            urls.append(mock_url)
         
-        return images
+        return urls
     
     def edit_image_with_nano_banana(self, prompt: str, input_image_url: str, 
                                    output_format: str = "png", 
