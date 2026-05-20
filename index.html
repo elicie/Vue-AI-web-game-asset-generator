@@ -2562,26 +2562,35 @@
                     }
                 };
 
-                // 🎨 原生Canvas不需要特殊的笔刷设置更新
+                // 🎨 Canvas笔刷设置更新
                 const updateBrushSettings = () => {
-                    console.log('🖌️ 笔刷设置更新:', {
-                        mode: drawingMode.value,
-                        size: brushSize.value,
-                        color: drawingColor.value,
-                        opacity: brushOpacity.value
-                    });
+                    const ctx = canvasContext.value;
+                    if (ctx) {
+                        ctx.lineWidth = brushSize.value;
+                        ctx.globalAlpha = brushOpacity.value;
+                        ctx.strokeStyle = drawingColor.value;
+                    }
                 };
 
                 const updateBrushColor = () => {
-                    console.log('🎨 颜色更新:', drawingColor.value);
+                    const ctx = canvasContext.value;
+                    if (ctx) {
+                        ctx.strokeStyle = drawingColor.value;
+                    }
                 };
 
                 const updateBrushSize = () => {
-                    console.log('📏 画笔尺寸更新:', brushSize.value, 'px');
+                    const ctx = canvasContext.value;
+                    if (ctx) {
+                        ctx.lineWidth = brushSize.value;
+                    }
                 };
 
                 const updateBrushOpacity = () => {
-                    console.log('🔍 透明度更新:', brushOpacity.value);
+                    const ctx = canvasContext.value;
+                    if (ctx) {
+                        ctx.globalAlpha = brushOpacity.value;
+                    }
                 };
 
                 // 🎨 原生Canvas清空画布

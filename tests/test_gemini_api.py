@@ -176,3 +176,114 @@ class TestSysPathClean:
         assert "sys.path.append('..')" not in content, (
             "sys.path.append('..') still present in backend.py"
         )
+
+
+# ---------------------------------------------------------------------------
+# F5: CORS origins configurable via environment variable
+# ---------------------------------------------------------------------------
+class TestCORSConfiguration:
+    """Verify CORS origins are configurable via CORS_ORIGINS env var."""
+
+    def test_cors_origins_from_env(self):
+        """When CORS_ORIGINS is set, middleware should use those origins."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # Verify the code reads from env var
+        assert "CORS_ORIGINS" in content, (
+            "CORS_ORIGINS env var not referenced in backend.py"
+        )
+        # Verify the wildcard is no longer hardcoded
+        assert 'allow_origins=["*"]' not in content, (
+            'Hardcoded allow_origins=["*"] still present in backend.py'
+        )
+
+    def test_cors_origins_splits_comma_separated(self):
+        """CORS_ORIGINS should be parsed as comma-separated list."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        assert '.split(",")' in content, (
+            "CORS_ORIGINS not split by comma in backend.py"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S4: MockGeminiAPI extracted from production gemini_api.py
+# ---------------------------------------------------------------------------
+class TestMockAPIExtraction:
+    """Verify MockGeminiAPI is not in production gemini_api.py."""
+
+    def test_no_mock_class_in_gemini_api(self):
+        """MockGeminiAPI should not be defined in gemini_api.py."""
+        gemini_path = os.path.join(REPO_ROOT, "gemini_api.py")
+        content = open(gemini_path, encoding="utf-8").read()
+        assert "class MockGeminiAPI" not in content, (
+            "MockGeminiAPI class still defined in gemini_api.py"
+        )
+
+    def test_mock_class_in_tests_directory(self):
+        """MockGeminiAPI should be in tests/mock_api.py."""
+        mock_path = os.path.join(REPO_ROOT, "tests", "mock_api.py")
+        assert os.path.exists(mock_path), "tests/mock_api.py does not exist"
+        content = open(mock_path, encoding="utf-8").read()
+        assert "class MockGeminiAPI" in content, (
+            "MockGeminiAPI class not found in tests/mock_api.py"
+        )
+
+    def test_create_gemini_api_lazy_imports_mock(self):
+        """create_gemini_api should lazy-import MockGeminiAPI when needed."""
+        import inspect
+        from gemini_api import create_gemini_api
+        source = inspect.getsource(create_gemini_api)
+        assert "from tests.mock_api import MockGeminiAPI" in source, (
+            "create_gemini_api does not lazy-import MockGeminiAPI from tests.mock_api"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S10: Brush update functions contain actual logic (not just console.log)
+# ---------------------------------------------------------------------------
+class TestBrushFunctionsLogic:
+    """Verify brush update functions update canvas context instead of just logging."""
+
+    def test_update_brush_color_has_context_logic(self):
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        # Find the updateBrushColor function body
+        start = content.find("const updateBrushColor = () => {")
+        assert start != -1, "updateBrushColor function not found"
+        end = content.find("};", start)
+        func_body = content[start:end]
+        assert "console.log" not in func_body, (
+            "updateBrushColor still contains console.log"
+        )
+        assert "ctx.strokeStyle" in func_body or "canvasContext" in func_body, (
+            "updateBrushColor does not update canvas context"
+        )
+
+    def test_update_brush_size_has_context_logic(self):
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        start = content.find("const updateBrushSize = () => {")
+        assert start != -1, "updateBrushSize function not found"
+        end = content.find("};", start)
+        func_body = content[start:end]
+        assert "console.log" not in func_body, (
+            "updateBrushSize still contains console.log"
+        )
+        assert "ctx.lineWidth" in func_body or "canvasContext" in func_body, (
+            "updateBrushSize does not update canvas context"
+        )
+
+    def test_update_brush_opacity_has_context_logic(self):
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        start = content.find("const updateBrushOpacity = () => {")
+        assert start != -1, "updateBrushOpacity function not found"
+        end = content.find("};", start)
+        func_body = content[start:end]
+        assert "console.log" not in func_body, (
+            "updateBrushOpacity still contains console.log"
+        )
+        assert "ctx.globalAlpha" in func_body or "canvasContext" in func_body, (
+            "updateBrushOpacity does not update canvas context"
+        )

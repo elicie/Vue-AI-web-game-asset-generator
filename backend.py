@@ -52,10 +52,15 @@ async def lifespan(application: FastAPI):
 
 app = FastAPI(title="Nano-Banana AI", description="Vue + FastAPI AI对话应用", lifespan=lifespan)
 
-# CORS配置
+# CORS配置 - 可通过环境变量 CORS_ORIGINS 限制允许的来源
+_cors_origins_str = os.environ.get("CORS_ORIGINS", "")
+if _cors_origins_str.strip():
+    _cors_origins = [origin.strip() for origin in _cors_origins_str.split(",") if origin.strip()]
+else:
+    _cors_origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境请限制为具体域名
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -907,9 +912,6 @@ async def chat(request: ChatRequest):
                     if request.mask_image_url.startswith('data:image/'):
                         # Base64遮罩数据
                         try:
-                            import base64
-                            import tempfile
-                            
                             # 解析Base64数据
                             header, data = request.mask_image_url.split(',', 1)
                             mask_image_data = base64.b64decode(data)
