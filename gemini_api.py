@@ -30,6 +30,27 @@ class NanoBananaAPI:
         "4:5": "4:5"
     }
 
+    def _apply_aspect_ratio(self, payload: dict, aspect_ratio: str,
+                            image_size: str = "auto") -> str:
+        """Apply aspect ratio settings to an API payload.
+
+        Sets the ratio in multiple payload fields (config, input.aspect_ratio,
+        input.image_size) because the upstream API docs are ambiguous about which
+        field it reads. All three are set consistently to the same resolved value.
+
+        Returns the resolved ratio string.
+        """
+        resolved = self.RATIO_MAPPING.get(aspect_ratio, image_size)
+        value = resolved if aspect_ratio != "auto" else "1:1"
+
+        payload["config"] = {
+            "response_modalities": ["Image"],
+            "image_config": {"aspect_ratio": value},
+        }
+        payload["input"]["aspect_ratio"] = value
+        payload["input"]["image_size"] = value
+        return resolved
+
     def __init__(self, api_key: str):
         """
         初始化Nano-Banana API
@@ -109,14 +130,9 @@ class NanoBananaAPI:
             # 限制图像数量
             num_images = max(1, min(4, num_images))
             
-            # 使用class-level比例映射
-            final_image_size = self.RATIO_MAPPING.get(aspect_ratio, image_size)
-            
-            # 使用原始prompt，让API通过image_config处理比例
             enhanced_prompt = prompt
             
-            print(f"🍌 使用Nano-Banana API生成{num_images}张图像: {enhanced_prompt}")
-            print(f"📐 图像比例: {aspect_ratio} -> {final_image_size}")
+            print(f"\U0001f34c 使用Nano-Banana API生成{num_images}张图像: {enhanced_prompt}")
             
             # 按照官方示例构建请求数据
             payload = {
@@ -127,43 +143,11 @@ class NanoBananaAPI:
                 }
             }
             
-            # 尝试多种格式来设置图像比例
-            if aspect_ratio != "auto":
-                # 方法1: 使用config字段（Google Gemini格式）
-                payload["config"] = {
-                    "response_modalities": ["Image"],
-                    "image_config": {
-                        "aspect_ratio": final_image_size
-                    }
-                }
-                
-                # 方法2: 在input中添加aspect_ratio（备用方案）
-                payload["input"]["aspect_ratio"] = final_image_size
-                
-                # 方法3: 在input中添加image_size（原始方案）
-                payload["input"]["image_size"] = final_image_size
-            else:
-                payload["config"] = {
-                    "response_modalities": ["Image"],
-                    "image_config": {
-                        "aspect_ratio": "1:1"
-                    }
-                }
-                payload["input"]["aspect_ratio"] = "1:1"
-                payload["input"]["image_size"] = "1:1"
+            # Apply aspect ratio to payload
+            final_image_size = self._apply_aspect_ratio(payload, aspect_ratio, image_size)
+            print(f"\U0001f4d0 图像比例: {aspect_ratio} -> {final_image_size}")
             
-            # 调试：打印实际发送的请求数据
-            print(f"🔍 发送给API的请求数据:")
-            print(f"   - model: {payload['model']}")
-            print(f"   - prompt: {payload['input']['prompt']}")
-            print(f"   - output_format: {payload['input']['output_format']}")
-            if "aspect_ratio" in payload["input"]:
-                print(f"   - input.aspect_ratio: {payload['input']['aspect_ratio']}")
-            if "image_size" in payload["input"]:
-                print(f"   - input.image_size: {payload['input']['image_size']}")
-            if "config" in payload:
-                print(f"   - config: {payload['config']}")
-            print(f"🔍 完整payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+            print(f"\U0001f50d 完整payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
             
             headers = {
                 "Content-Type": "application/json",
@@ -298,17 +282,12 @@ class NanoBananaAPI:
             编辑后的图像URL
         """
         try:
-            # 使用class-level比例映射
-            final_image_size = self.RATIO_MAPPING.get(aspect_ratio, image_size)
-            
             # 使用原始prompt，让API通过image_config处理比例
             enhanced_prompt = prompt
             
             print(f"🎨 使用Nano-Banana Edit API编辑图像: {enhanced_prompt}")
-            print(f"📐 图像比例: {aspect_ratio} -> {final_image_size}")
             print(f"📥 输入图像: {input_image_url[:100]}..." if len(input_image_url) > 100 else input_image_url)
             
-            # 🎯 如果有遮罩，输出遮罩信息
             if mask_image_url:
                 print(f"🎯 遮罩图像: {mask_image_url[:100]}..." if len(mask_image_url) > 100 else mask_image_url)
             
@@ -327,33 +306,11 @@ class NanoBananaAPI:
                 }
             }
             
-            # 添加config配置（如果比例不是auto）
-            if aspect_ratio != "auto":
-                payload["config"] = {
-                    "response_modalities": ["Image"],
-                    "image_config": {
-                        "aspect_ratio": final_image_size
-                    }
-                }
-            else:
-                payload["config"] = {
-                    "response_modalities": ["Image"],
-                    "image_config": {
-                        "aspect_ratio": "1:1"  # 默认正方形
-                    }
-                }
+            # Apply aspect ratio to payload
+            final_image_size = self._apply_aspect_ratio(payload, aspect_ratio, image_size)
             
-            # 🎯 如果有遮罩图像，添加到请求中（尝试不同参数名）
             if mask_image_url:
-                # 🔧 尝试 mask_image 参数名（更符合常见命名）
                 payload["input"]["mask_image"] = mask_image_url
-                print(f"🎯 已添加遮罩图像到请求中: mask_image (参数名)")
-                print(f"🎯 遮罩URL: {mask_image_url[:100]}...")
-                print(f"🎯 完整payload结构:")
-                print(f"   - model: {payload['model']}")
-                print(f"   - prompt: {payload['input']['prompt']}")
-                print(f"   - image_urls: {len(payload['input']['image_urls'])} 张图片")
-                print(f"   - mask_image: {'已设置' if payload['input'].get('mask_image') else '未设置'}")
             
             headers = {
                 "Content-Type": "application/json",

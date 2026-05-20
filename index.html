@@ -1247,6 +1247,13 @@
     <script>
         const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
+        // Configurable debug logger – set to true to enable verbose logging
+        const DEBUG = window.__DEBUG__ || false;
+        const debug = {
+            log: (...args) => DEBUG && console.log('[DEBUG]', ...args),
+            warn: (...args) => DEBUG && console.warn('[DEBUG]', ...args),
+        };
+
         createApp({
             setup() {
                 // 响应式数据
@@ -1421,7 +1428,7 @@
                             if (!image1Url.value) {
                                 // 第一张图片 - 设置为图1
                                 image1Url.value = uploadedUrl;
-                                console.log('图1上传成功:', image1Url.value);
+                                debug.log('图1上传成功:', image1Url.value);
                                 
                                 // 清除原有的单图模式数据
                                 if (uploadedImageUrl.value) {
@@ -1431,16 +1438,16 @@
                             } else if (!image2Url.value) {
                                 // 第二张图片 - 设置为图2
                                 image2Url.value = uploadedUrl;
-                                console.log('图2上传成功:', image2Url.value);
+                                debug.log('图2上传成功:', image2Url.value);
                             } else {
                                 // 已经有两张图片，询问用户要替换哪张
                                 const replaceChoice = confirm('이미 두 개의 이미지가 있습니다. 이미지 1을 교체하시겠습니까? "확인"을 클릭하면 이미지 1 교체, "취소"를 클릭하면 이미지 2 교체');
                                 if (replaceChoice) {
                                     image1Url.value = uploadedUrl;
-                                    console.log('이미지 1 교체됨:', image1Url.value);
+                                    debug.log('이미지 1 교체됨:', image1Url.value);
                                 } else {
                                     image2Url.value = uploadedUrl;
-                                    console.log('이미지 2 교체됨:', image2Url.value);
+                                    debug.log('이미지 2 교체됨:', image2Url.value);
                                 }
                             }
 
@@ -1481,7 +1488,7 @@
                 // 选择图像比例
                 const selectRatio = (ratio) => {
                     selectedRatio.value = ratio;
-                    console.log('选择图像比例:', ratio);
+                    debug.log('选择图像比例:', ratio);
                 };
 
                 // 拖拽上传处理
@@ -1558,15 +1565,15 @@
                     }
                     
                     // 🎯 调试信息
-                    console.log('🔍 发送消息调试信息:');
-                    console.log('  - image1Url:', image1Url.value);
-                    console.log('  - image2Url:', image2Url.value);
-                    console.log('  - hasDualImages:', hasDualImages);
-                    console.log('  - uploadedImageUrl:', uploadedImageUrl.value);
-                    console.log('  - drawingImageUrl:', drawingImageUrl.value);
-                    console.log('  - currentImageUrl:', currentImageUrl);
-                    console.log('  - currentModelType:', currentModelType);
-                    console.log('  - currentMaskData:', currentMaskData.value ? currentMaskData.value.substring(0, 50) + '...' : 'null');
+                    debug.log('🔍 发送消息调试信息:');
+                    debug.log('  - image1Url:', image1Url.value);
+                    debug.log('  - image2Url:', image2Url.value);
+                    debug.log('  - hasDualImages:', hasDualImages);
+                    debug.log('  - uploadedImageUrl:', uploadedImageUrl.value);
+                    debug.log('  - drawingImageUrl:', drawingImageUrl.value);
+                    debug.log('  - currentImageUrl:', currentImageUrl);
+                    debug.log('  - currentModelType:', currentModelType);
+                    debug.log('  - currentMaskData:', currentMaskData.value ? currentMaskData.value.substring(0, 50) + '...' : 'null');
                     
                     // 清空输入
                     inputMessage.value = '';
@@ -1630,25 +1637,25 @@
                         if (hasDualImages) {
                             // 在prompt中添加双图处理指令，明确告知图1和图2
                             requestData.message = `双图处理：请根据图1和图2的内容以及用户要求进行处理。${message}。图2链接：${image2Url.value}`;
-                            console.log('🎭 双图模式：图1和图2');
-                            console.log('🎭 图1:', image1Url.value);
-                            console.log('🎭 图2:', image2Url.value);
+                            debug.log('🎭 双图模式：图1和图2');
+                            debug.log('🎭 图1:', image1Url.value);
+                            debug.log('🎭 图2:', image2Url.value);
                         } else if (image1Url.value) {
                             // 单图模式
-                            console.log('🎭 单图模式：图1');
-                            console.log('🎭 图1:', image1Url.value);
+                            debug.log('🎭 单图模式：图1');
+                            debug.log('🎭 图1:', image1Url.value);
                         }
                         
                         // 🎯 如果是编辑模式且有遮罩数据，添加遮罩信息
                         const effectiveMaskData = currentMaskData.value || tempMaskData;
                         if (currentModelType === 'edit' && effectiveMaskData) {
                             requestData.mask_image_url = effectiveMaskData;
-                            console.log('🎯 已添加遮罩数据到请求中，遮罩数据长度:', effectiveMaskData.length);
-                            console.log('🎯 遮罩数据预览:', effectiveMaskData.substring(0, 100) + '...');
+                            debug.log('🎯 已添加遮罩数据到请求中，遮罩数据长度:', effectiveMaskData.length);
+                            debug.log('🎯 遮罩数据预览:', effectiveMaskData.substring(0, 100) + '...');
                         } else if (currentModelType === 'edit') {
-                            console.log('🎯 编辑模式但无遮罩数据，将进行全图编辑');
-                            console.log('🎯 currentMaskData.value:', currentMaskData.value);
-                            console.log('🎯 tempMaskData:', tempMaskData ? tempMaskData.substring(0, 50) + '...' : 'null');
+                            debug.log('🎯 编辑模式但无遮罩数据，将进行全图编辑');
+                            debug.log('🎯 currentMaskData.value:', currentMaskData.value);
+                            debug.log('🎯 tempMaskData:', tempMaskData ? tempMaskData.substring(0, 50) + '...' : 'null');
                         }
                         
                         const response = await axios.post(`${API_BASE}/api/chat`, requestData);
@@ -1752,7 +1759,7 @@
                             return; // 成功，直接返回
                             
                         } catch (proxyError) {
-                            console.warn('代理下载失败，尝试直接下载:', proxyError);
+                            debug.warn('代理下载失败，尝试直接下载:', proxyError);
                         }
                         
                         // 如果代理失败，尝试直接fetch下载
@@ -1787,7 +1794,7 @@
                             
                         } catch (fetchError) {
                             // 最后尝试直接链接下载
-                            console.warn('Fetch下载失败，尝试直接链接:', fetchError);
+                            debug.warn('Fetch下载失败，尝试直接链接:', fetchError);
                             const link = document.createElement('a');
                             link.href = imageUrl;
                             link.download = filename;
@@ -1837,17 +1844,17 @@
                         // 🔧 设置跨域属性和代理
                         if (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1') || imageUrl.startsWith('/uploads/')) {
                             // 本地服务器不需要跨域
-                            console.log('🔍 本地图片，不设置crossOrigin');
+                            debug.log('🔍 本地图片，不设置crossOrigin');
                         } else {
                             // 外部图片：使用服务器代理来避免CORS问题
-                            console.log('🔍 外部图片，使用服务器代理避免CORS');
+                            debug.log('🔍 外部图片，使用服务器代理避免CORS');
                             const proxyUrl = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
-                            console.log('🔄 代理URL:', proxyUrl);
+                            debug.log('🔄 代理URL:', proxyUrl);
                             imageUrl = proxyUrl; // 使用代理URL
                         }
                         
                         testImg.onload = () => {
-                            console.log('✅ 图片可访问性测试通过:', imageUrl);
+                            debug.log('✅ 图片可访问性测试通过:', imageUrl);
                             resolve(true);
                         };
                         testImg.onerror = (error) => {
@@ -1857,7 +1864,7 @@
                             reject(new Error(`图片无法访问: ${imageUrl}`));
                         };
                         
-                        console.log('🔍 开始测试图片访问:', imageUrl);
+                        debug.log('🔍 开始测试图片访问:', imageUrl);
                         testImg.src = imageUrl;
                     });
                 };
@@ -1865,20 +1872,20 @@
                 // 🎨 智能图片加载（优化本地图片处理）
                 const loadImageWithProxy = async (imageUrl, onSuccess, onError) => {
                     try {
-                        console.log('🔄 智能加载图片:', imageUrl);
+                        debug.log('🔄 智能加载图片:', imageUrl);
                         
                         // 🔧 优化：对于本地localhost图片，尝试直接加载
                         if (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1')) {
-                            console.log('🏠 检测到本地图片，尝试直接加载');
+                            debug.log('🏠 检测到本地图片，尝试直接加载');
                             
                             const img = new Image();
                             img.onload = () => {
-                                console.log('✅ 本地图片直接加载成功');
-                                console.log('📐 图片尺寸:', img.width, 'x', img.height);
+                                debug.log('✅ 本地图片直接加载成功');
+                                debug.log('📐 图片尺寸:', img.width, 'x', img.height);
                                 onSuccess(img);
                             };
                             img.onerror = async (error) => {
-                                console.warn('⚠️ 本地图片直接加载失败，尝试服务器清理:', error);
+                                debug.warn('⚠️ 本地图片直接加载失败，尝试服务器清理:', error);
                                 // 降级到服务器清理方案
                                 await fallbackToServerClean(imageUrl, onSuccess, onError);
                             };
@@ -1898,15 +1905,15 @@
                 // 🎨 备用服务器清理方案
                 const fallbackToServerClean = async (imageUrl, onSuccess, onError) => {
                     try {
-                        console.log('🧹 使用服务器清理方案:', imageUrl);
+                        debug.log('🧹 使用服务器清理方案:', imageUrl);
                         
                         const cleanImageData = await getCleanImageData(imageUrl);
                         
                         if (cleanImageData) {
                             const img = new Image();
                             img.onload = () => {
-                                console.log('✅ 服务器清理图片加载成功');
-                                console.log('📐 图片尺寸:', img.width, 'x', img.height);
+                                debug.log('✅ 服务器清理图片加载成功');
+                                debug.log('📐 图片尺寸:', img.width, 'x', img.height);
                                 onSuccess(img);
                             };
                             img.onerror = (error) => {
@@ -1927,14 +1934,14 @@
                 // 🎨 获取干净的图片数据（避免Canvas污染）
                 const getCleanImageData = async (imageUrl) => {
                     try {
-                        console.log('🧹 请求服务器清理图片:', imageUrl);
+                        debug.log('🧹 请求服务器清理图片:', imageUrl);
                         
                         const response = await axios.post(`${API_BASE}/api/clean-image`, {
                             imageUrl: imageUrl
                         });
                         
                         if (response.data.success) {
-                            console.log('✅ 服务器图片清理成功');
+                            debug.log('✅ 服务器图片清理成功');
                             return response.data.imageData;
                         } else {
                             console.error('❌ 服务器图片清理失败:', response.data.error);
@@ -1949,7 +1956,7 @@
                 // 🎨 创建简单遮罩（备用方案）
                 const createSimpleMask = async () => {
                     try {
-                        console.log('🎯 创建简单遮罩作为备用方案');
+                        debug.log('🎯 创建简单遮罩作为备用方案');
                         
                         // 创建临时画布
                         const tempCanvas = document.createElement('canvas');
@@ -1982,7 +1989,7 @@
                         });
                         
                         const maskDataUrl = tempCanvas.toDataURL('image/png', 1.0);
-                        console.log('✅ 简单遮罩创建成功');
+                        debug.log('✅ 简单遮罩创建成功');
                         return maskDataUrl;
                         
                     } catch (error) {
@@ -1994,7 +2001,7 @@
                 // 🎨 服务器端Canvas导出（用于解决污染问题）
                 const serverSideCanvasExport = async () => {
                     try {
-                        console.log('🔄 使用服务器端Canvas合成...');
+                        debug.log('🔄 使用服务器端Canvas合成...');
                         
                         // 收集画布数据
                         const canvasData = {
@@ -2010,13 +2017,13 @@
                             }))
                         };
                         
-                        console.log('📦 发送Canvas数据到服务器:', canvasData);
+                        debug.log('📦 发送Canvas数据到服务器:', canvasData);
                         
                         // 发送到服务器进行合成
                         const response = await axios.post(`${API_BASE}/api/merge-canvas`, canvasData);
                         
                         if (response.data.success) {
-                            console.log('✅ 服务器端Canvas合成成功');
+                            debug.log('✅ 服务器端Canvas合成成功');
                             return response.data.imageData;
                         } else {
                             console.error('❌ 服务器端Canvas合成失败:', response.data.error);
@@ -2031,28 +2038,28 @@
 
                 // 绘图弹窗方法
                 const openDrawingModal = () => {
-                    console.log('🎨 打开绘图弹窗');
+                    debug.log('🎨 打开绘图弹窗');
                     
                     // 依次尝试：当前上传图 > 单图上传(兼容老逻辑) > 图1
                     const candidateUrl = currentUploadedImageUrl.value || uploadedImageUrl.value || image1Url.value || '';
                     if (candidateUrl) {
-                        console.log('📷 载入待编辑图片到画布:', candidateUrl);
+                        debug.log('📷 载入待编辑图片到画布:', candidateUrl);
                         modalMode.value = 'edit';
                         currentEditingImageUrl.value = candidateUrl;
                         showDrawingModal.value = true;
                         
                         setTimeout(() => {
-                            console.log('🎨 初始化原生Canvas（编辑模式）');
+                            debug.log('🎨 初始化原生Canvas（编辑模式）');
                             initNativeCanvas(candidateUrl);
                         }, 100);
                     } else {
-                        console.log('📝 没有可编辑图片，创建空白画布');
+                        debug.log('📝 没有可编辑图片，创建空白画布');
                         modalMode.value = 'draw';
                         currentEditingImageUrl.value = '';
                         showDrawingModal.value = true;
                         
                         setTimeout(() => {
-                            console.log('🎨 初始化原生Canvas（空白模式）');
+                            debug.log('🎨 初始化原生Canvas（空白模式）');
                             initNativeCanvas();
                         }, 100);
                     }
@@ -2060,17 +2067,17 @@
 
                 const openImageEditModal = (imageUrl) => {
                     try {
-                        console.log('🖌️ 打开图片编辑弹窗');
-                        console.log('📷 原始图片URL:', imageUrl);
-                        console.log('🔗 URL类型:', typeof imageUrl);
-                        console.log('📏 URL长度:', imageUrl ? imageUrl.length : 'undefined');
+                        debug.log('🖌️ 打开图片编辑弹窗');
+                        debug.log('📷 原始图片URL:', imageUrl);
+                        debug.log('🔗 URL类型:', typeof imageUrl);
+                        debug.log('📏 URL长度:', imageUrl ? imageUrl.length : 'undefined');
                         
                         // 🔧 调试：检查所有必要的变量是否定义
-                        console.log('🔍 调试检查:');
-                        console.log('  - API_BASE:', typeof API_BASE, API_BASE);
-                        console.log('  - modalCanvas:', typeof modalCanvas, modalCanvas?.value);
-                        console.log('  - canvasContext:', typeof canvasContext, canvasContext?.value);
-                        console.log('  - showDrawingModal:', typeof showDrawingModal, showDrawingModal?.value);
+                        debug.log('🔍 调试检查:');
+                        debug.log('  - API_BASE:', typeof API_BASE, API_BASE);
+                        debug.log('  - modalCanvas:', typeof modalCanvas, modalCanvas?.value);
+                        debug.log('  - canvasContext:', typeof canvasContext, canvasContext?.value);
+                        debug.log('  - showDrawingModal:', typeof showDrawingModal, showDrawingModal?.value);
                     
                     // 检查URL是否有效
                     if (!imageUrl || imageUrl.trim() === '') {
@@ -2083,8 +2090,8 @@
                     let fullImageUrl = imageUrl;
                     if (imageUrl.startsWith('/')) {
                         fullImageUrl = `${API_BASE}${imageUrl}`;
-                        console.log('🔄 转换为完整URL:', fullImageUrl);
-                        console.log('🔍 使用API_BASE:', API_BASE);
+                        debug.log('🔄 转换为完整URL:', fullImageUrl);
+                        debug.log('🔍 使用API_BASE:', API_BASE);
                     }
                     
                     modalMode.value = 'edit';
@@ -2093,21 +2100,21 @@
                     
                     // 使用setTimeout确保DOM完全渲染
                     setTimeout(async () => {
-                        console.log('⚙️ 开始初始化原生Canvas，使用URL:', fullImageUrl);
+                        debug.log('⚙️ 开始初始化原生Canvas，使用URL:', fullImageUrl);
                         
                         // 🔧 在浏览器中直接测试URL是否可访问
-                        console.log('🧪 测试：请在新标签页中打开这个URL:', fullImageUrl);
-                        console.log('🧪 如果URL无法打开，说明服务器配置有问题');
+                        debug.log('🧪 测试：请在新标签页中打开这个URL:', fullImageUrl);
+                        debug.log('🧪 如果URL无法打开，说明服务器配置有问题');
                         
                         // 🔧 简化测试：直接尝试加载图片，不做预检查
-                        console.log('🚀 直接开始初始化Canvas');
+                        debug.log('🚀 直接开始初始化Canvas');
                         try {
                             initNativeCanvas(fullImageUrl);
                         } catch (error) {
                             console.error('❌ Canvas初始化失败:', error);
                             
                             // 尝试不同的URL格式
-                            console.log('🔄 尝试其他URL格式...');
+                            debug.log('🔄 尝试其他URL格式...');
                             
                             const alternativeUrls = [
                                 imageUrl, // 原始URL
@@ -2119,14 +2126,14 @@
                             let success = false;
                             for (const altUrl of alternativeUrls) {
                                 try {
-                                    console.log('🧪 测试URL:', altUrl);
+                                    debug.log('🧪 测试URL:', altUrl);
                                     await testImageAccess(altUrl);
-                                    console.log('✅ 找到可用的URL:', altUrl);
+                                    debug.log('✅ 找到可用的URL:', altUrl);
                                     initNativeCanvas(altUrl);
                                     success = true;
                                     break;
                                 } catch (altError) {
-                                    console.log('❌ URL不可用:', altUrl);
+                                    debug.log('❌ URL不可用:', altUrl);
                                 }
                             }
                             
@@ -2162,12 +2169,12 @@
                     drawingPaths.value = [];
                     backgroundImage.value = null;
                     
-                    console.log('🎨 绘图弹窗已关闭，资源已清理');
+                    debug.log('🎨 绘图弹窗已关闭，资源已清理');
                 };
 
                 // 🎨 原生Canvas初始化函数
                 const initNativeCanvas = (backgroundImageUrl = null) => {
-                    console.log('🎨 原生Canvas初始化，modalCanvas.value:', modalCanvas.value);
+                    debug.log('🎨 原生Canvas初始化，modalCanvas.value:', modalCanvas.value);
                     
                     if (!modalCanvas.value) {
                         console.error('❌ modalCanvas.value 为空，无法初始化');
@@ -2178,16 +2185,16 @@
                     canvasContext.value = modalCanvas.value.getContext('2d');
                     
                     if (backgroundImageUrl) {
-                        console.log('🖼️ 正在加载背景图片:', backgroundImageUrl);
+                        debug.log('🖼️ 正在加载背景图片:', backgroundImageUrl);
                         
                         loadImageWithProxy(backgroundImageUrl, (img) => {
-                            console.log('✅ 背景图片加载成功，原始尺寸:', img.width, 'x', img.height);
+                            debug.log('✅ 背景图片加载成功，原始尺寸:', img.width, 'x', img.height);
                             
                             canvasWidth.value = img.width;
                             canvasHeight.value = img.height;
                             backgroundImage.value = img;
                             
-                            console.log('📐 画布尺寸设置为:', canvasWidth.value, 'x', canvasHeight.value);
+                            debug.log('📐 画布尺寸设置为:', canvasWidth.value, 'x', canvasHeight.value);
                             
                             nextTick(() => {
                                 setupNativeCanvas();
@@ -2205,7 +2212,7 @@
                         });
                     } else {
                         // 没有背景图片，使用默认尺寸
-                        console.log('📐 使用默认画布尺寸');
+                        debug.log('📐 使用默认画布尺寸');
                         canvasWidth.value = 600;
                         canvasHeight.value = 400;
                         backgroundImage.value = null;
@@ -2217,7 +2224,7 @@
 
                 // 🎨 设置原生Canvas
                 const setupNativeCanvas = () => {
-                    console.log('🔧 设置原生Canvas');
+                    debug.log('🔧 设置原生Canvas');
                     
                     if (!modalCanvas.value || !canvasContext.value) {
                         console.error('❌ Canvas或上下文未准备就绪');
@@ -2240,7 +2247,7 @@
                         maskContext.value.fillStyle = '#000000';
                         maskContext.value.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
                         
-                        console.log('🎯 遮罩画布已初始化');
+                        debug.log('🎯 遮罩画布已初始化');
                     }
                     
                     // 清空画布并绘制背景
@@ -2253,7 +2260,7 @@
                     drawingPaths.value = [];
                     isDrawing.value = false;
                     
-                    console.log('✅ 原生Canvas设置完成');
+                    debug.log('✅ 原生Canvas设置完成');
                 };
 
                 // 🎨 重绘Canvas（背景图片 + 所有路径）
@@ -2361,7 +2368,7 @@
                         canvas.dispatchEvent(mouseEvent);
                     };
                     
-                    console.log('✅ 绘图事件监听器已设置');
+                    debug.log('✅ 绘图事件监听器已设置');
                 };
 
                 // 🎨 获取鼠标在Canvas上的精确坐标
@@ -2394,7 +2401,7 @@
                     
                     drawingPaths.value.push(newPath);
                     
-                    console.log('🎨 开始绘图:', coords, '模式:', drawingMode.value);
+                    debug.log('🎨 开始绘图:', coords, '模式:', drawingMode.value);
                 };
 
                 // 🎨 绘图中
@@ -2462,8 +2469,8 @@
                         
                         // 获取当前路径信息用于调试
                         const currentPath = drawingPaths.value[drawingPaths.value.length - 1];
-                        console.log('🎨 停止绘图 - 路径点数:', currentPath ? currentPath.points.length : 0);
-                        console.log('🎨 总路径数:', drawingPaths.value.length);
+                        debug.log('🎨 停止绘图 - 路径点数:', currentPath ? currentPath.points.length : 0);
+                        debug.log('🎨 总路径数:', drawingPaths.value.length);
                         
                         // 更新撤销状态
                         updateUndoState();
@@ -2481,7 +2488,7 @@
                         
                         updateUndoState();
                         
-                        console.log('↶ 撤销操作，剩余路径:', drawingPaths.value.length);
+                        debug.log('↶ 撤销操作，剩余路径:', drawingPaths.value.length);
                     }
                 };
 
@@ -2492,10 +2499,10 @@
 
                 // 🎯 检查遮罩是否包含实际内容
                 const checkMaskHasContent = () => {
-                    console.log('🔍 开始检查遮罩内容...');
+                    debug.log('🔍 开始检查遮罩内容...');
                     
                     if (!maskContext.value || !maskCanvas.value) {
-                        console.log('🎯 遮罩画布或上下文不存在');
+                        debug.log('🎯 遮罩画布或上下文不存在');
                         return false;
                     }
                     
@@ -2504,14 +2511,14 @@
                         path.mode !== 'eraser' && path.points && path.points.length > 1
                     );
                     
-                    console.log('🎯 绘图路径检查:', {
+                    debug.log('🎯 绘图路径检查:', {
                         totalPaths: drawingPaths.value.length,
                         hasValidPaths: hasDrawingPaths,
                         paths: drawingPaths.value.map(p => ({ mode: p.mode, points: p.points?.length || 0 }))
                     });
                     
                     if (hasDrawingPaths) {
-                        console.log('🎯 基于绘图路径检测到涂抹内容');
+                        debug.log('🎯 基于绘图路径检测到涂抹内容');
                         return true;
                     }
                     
@@ -2528,12 +2535,12 @@
                             
                             // 如果发现白色或接近白色的像素，说明有涂抹内容
                             if (r > 128 || g > 128 || b > 128) {
-                                console.log('🎯 基于像素数据检测到白色区域，有涂抹内容');
+                                debug.log('🎯 基于像素数据检测到白色区域，有涂抹内容');
                                 return true;
                             }
                         }
                         
-                        console.log('🎯 像素检查：遮罩中只有黑色背景，无涂抹内容');
+                        debug.log('🎯 像素检查：遮罩中只有黑色背景，无涂抹内容');
                         return false;
                     } catch (error) {
                         console.error('❌ 检查遮罩像素数据失败:', error);
@@ -2547,18 +2554,18 @@
                 const setDrawingMode = (mode) => {
                     drawingMode.value = mode;
                     
-                    console.log('🎨 切换绘图模式:', mode);
+                    debug.log('🎨 切换绘图模式:', mode);
                     
                     switch (mode) {
                         case 'pencil':
                         case 'brush':
-                            console.log('🖌️ 画笔模式，尺寸:', brushSize.value, 'px，颜色:', drawingColor.value);
+                            debug.log('🖌️ 画笔模式，尺寸:', brushSize.value, 'px，颜色:', drawingColor.value);
                             break;
                         case 'eraser':
-                            console.log('🧹 橡皮擦模式，尺寸:', brushSize.value, 'px');
+                            debug.log('🧹 橡皮擦模式，尺寸:', brushSize.value, 'px');
                             break;
                         default:
-                            console.log('❓ 未知绘图模式:', mode);
+                            debug.log('❓ 未知绘图模式:', mode);
                     }
                 };
 
@@ -2607,12 +2614,12 @@
                     if (maskContext.value && modalMode.value === 'edit') {
                         maskContext.value.fillStyle = '#000000';
                         maskContext.value.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
-                        console.log('🎯 遮罩画布已清空');
+                        debug.log('🎯 遮罩画布已清空');
                     }
                     
                     updateUndoState();
                     
-                    console.log('🧹 画布已清空');
+                    debug.log('🧹 画布已清空');
                 };
 
                 // undoDrawing and updateUndoState defined above
@@ -2623,10 +2630,10 @@
 
                 // 🎨 原生Canvas确认绘图
                 const confirmDrawing = async () => {
-                    console.log('🔘 确定按钮被点击！');
+                    debug.log('🔘 确定按钮被点击！');
                     
                     if (isConfirming.value) {
-                        console.log('⚠️ 正在处理中，忽略重复点击');
+                        debug.log('⚠️ 正在处理中，忽略重复点击');
                         return;
                     }
                     
@@ -2638,34 +2645,34 @@
                             return;
                         }
                         
-                        console.log('✅ 原生Canvas存在，开始导出画布');
-                        console.log('📐 画布尺寸:', canvasWidth.value, 'x', canvasHeight.value);
-                        console.log('🎨 绘图路径数量:', drawingPaths.value.length);
+                        debug.log('✅ 原生Canvas存在，开始导出画布');
+                        debug.log('📐 画布尺寸:', canvasWidth.value, 'x', canvasHeight.value);
+                        debug.log('🎨 绘图路径数量:', drawingPaths.value.length);
                         
                         // 🔧 确保所有绘图内容都已绘制到Canvas上
-                        console.log('🔍 导出前Canvas状态:');
-                        console.log('  - Canvas尺寸:', modalCanvas.value.width, 'x', modalCanvas.value.height);
-                        console.log('  - 背景图片:', backgroundImage.value ? '存在' : '无');
-                        console.log('  - 绘图路径数:', drawingPaths.value.length);
+                        debug.log('🔍 导出前Canvas状态:');
+                        debug.log('  - Canvas尺寸:', modalCanvas.value.width, 'x', modalCanvas.value.height);
+                        debug.log('  - 背景图片:', backgroundImage.value ? '存在' : '无');
+                        debug.log('  - 绘图路径数:', drawingPaths.value.length);
                         
                         // 详细显示每个路径
                         drawingPaths.value.forEach((path, index) => {
-                            console.log(`  路径${index + 1}: ${path.mode}, ${path.size}px, ${path.points.length}点, 颜色:${path.color}`);
+                            debug.log(`  路径${index + 1}: ${path.mode}, ${path.size}px, ${path.points.length}点, 颜色:${path.color}`);
                         });
                         
                         redrawCanvas();
-                        console.log('🔄 重新绘制Canvas完成，确保包含所有内容');
+                        debug.log('🔄 重新绘制Canvas完成，确保包含所有内容');
                         
                         // 尝试导出Canvas，如果出现污染错误则使用备用方案
                         let exportedImageData = null;
                         try {
                             exportedImageData = modalCanvas.value.toDataURL('image/png', 1.0);
-                            console.log('✅ 原生Canvas导出成功，数据长度:', exportedImageData.length);
+                            debug.log('✅ 原生Canvas导出成功，数据长度:', exportedImageData.length);
                         } catch (error) {
                             console.error('❌ Canvas导出失败（可能是污染问题）:', error.message);
                             
                             if (error.message.includes('Tainted canvases may not be exported')) {
-                                console.log('🔄 检测到Canvas污染，使用服务器端合成方案...');
+                                debug.log('🔄 检测到Canvas污染，使用服务器端合成方案...');
                                 
                                 try {
                                     // 使用服务器端合成作为备用方案
@@ -2706,65 +2713,65 @@
                             if (hasDrawingContent) {
                                 try {
                                     maskData = maskCanvas.value.toDataURL('image/png', 1.0);
-                                    console.log('🎯 遮罩数据导出成功，数据长度:', maskData.length);
+                                    debug.log('🎯 遮罩数据导出成功，数据长度:', maskData.length);
                                 } catch (maskError) {
                                     console.error('❌ 遮罩导出失败:', maskError.message);
                                     // 遮罩画布不应该有污染问题，但如果有，创建一个简单的遮罩
                                     maskData = await createSimpleMask();
                                 }
                             } else {
-                                console.log('🎯 未检测到涂抹内容，将不使用遮罩');
+                                debug.log('🎯 未检测到涂抹内容，将不使用遮罩');
                             }
                         }
                         
                         // 🔧 验证导出的图片是否包含绘图内容
                         if (exportedImageData.length < 10000) {
-                            console.warn('⚠️ 导出图片数据太小，可能没有包含绘图内容');
+                            debug.warn('⚠️ 导出图片数据太小，可能没有包含绘图内容');
                         }
                         
                         // 验证导出图片的实际尺寸
                         const testImg = new Image();
                         testImg.onload = () => {
-                            console.log('📐 导出图片的实际尺寸:', testImg.width, 'x', testImg.height);
+                            debug.log('📐 导出图片的实际尺寸:', testImg.width, 'x', testImg.height);
                         };
                         testImg.src = exportedImageData;
                         
                         // 🎯 如果是编辑模式，需要特殊处理
                         if (modalMode.value === 'edit') {
                             if (maskData) {
-                                console.log('🎯 编辑模式：检测到涂抹区域，将使用原图+遮罩进行局部编辑');
+                                debug.log('🎯 编辑模式：检测到涂抹区域，将使用原图+遮罩进行局部编辑');
                                 // 保存遮罩数据到全局变量
                                 currentMaskData.value = maskData;
                                 // 🔧 关键修复：始终使用原始图像URL进行编辑
                                 if (currentEditingImageUrl.value) {
                                     drawingImageUrl.value = currentEditingImageUrl.value; // 使用原始图像
-                                    console.log('🎯 将使用原始图像进行编辑:', currentEditingImageUrl.value.substring(0, 50) + '...');
-                                    console.log('🎯 遮罩数据长度:', maskData.length);
+                                    debug.log('🎯 将使用原始图像进行编辑:', currentEditingImageUrl.value.substring(0, 50) + '...');
+                                    debug.log('🎯 遮罩数据长度:', maskData.length);
                                 } else {
-                                    console.warn('⚠️ 警告：原始图像URL为空，但有遮罩数据');
+                                    debug.warn('⚠️ 警告：原始图像URL为空，但有遮罩数据');
                                     // 即使Canvas导出失败，也要确保有图像URL供编辑
                                     drawingImageUrl.value = exportedImageData || currentEditingImageUrl.value || 'error';
                                 }
-                                console.log('🎯 遮罩数据已保存，准备进行局部编辑');
+                                debug.log('🎯 遮罩数据已保存，准备进行局部编辑');
                             } else {
-                                console.log('🎯 编辑模式但无涂抹区域，将进行全图编辑');
+                                debug.log('🎯 编辑模式但无涂抹区域，将进行全图编辑');
                                 currentMaskData.value = '';
                                 // 对于无涂抹的编辑，可以使用原始图像
                                 drawingImageUrl.value = currentEditingImageUrl.value || exportedImageData;
                             }
                         } else {
                             // 绘图模式
-                            console.log('🎯 绘图模式：使用合成图像');
+                            debug.log('🎯 绘图模式：使用合成图像');
                             currentMaskData.value = '';
                             drawingImageUrl.value = exportedImageData;
                         }
                         
-                        console.log('✅ 图片已保存到drawingImageUrl，准备显示缩略图');
+                        debug.log('✅ 图片已保存到drawingImageUrl，准备显示缩略图');
                         
                         // 尝试上传到服务器（异步，不阻塞关闭弹窗）
                         setTimeout(async () => {
                             try {
-                                console.log('🔄 后台上传图片到服务器...');
+                                debug.log('🔄 后台上传图片到服务器...');
                                 
                                 // 将Base64数据转换为Blob
                                 const response = await fetch(exportedImageData);
@@ -2783,15 +2790,15 @@
                                 
                                 if (uploadResponse.data.success) {
                                     const uploadedUrl = `${API_BASE}${uploadResponse.data.file_url}`;
-                                    console.log('✅ 编辑后的图片上传成功:', uploadedUrl);
+                                    debug.log('✅ 编辑后的图片上传成功:', uploadedUrl);
                                     
                                     // 更新为服务器URL
                                     drawingImageUrl.value = uploadedUrl;
                                 } else {
-                                    console.log('⚠️ 上传失败，继续使用Base64数据');
+                                    debug.log('⚠️ 上传失败，继续使用Base64数据');
                                 }
                             } catch (error) {
-                                console.log('⚠️ 后台上传失败，继续使用Base64数据:', error.message);
+                                debug.log('⚠️ 后台上传失败，继续使用Base64数据:', error.message);
                             }
                         }, 100);
                         

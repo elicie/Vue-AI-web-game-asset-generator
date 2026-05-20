@@ -8,7 +8,7 @@ FastAPI后端 - Nano-Banana AI对话应用
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 # from fastapi.staticfiles import StaticFiles  # 单文件应用暂不需要
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional, Tuple
 from contextlib import asynccontextmanager
@@ -24,6 +24,7 @@ from PIL import Image, ImageDraw
 import io
 import base64
 import requests
+import shutil
 
 # 添加当前目录到Python路径，以便导入gemini_api
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -492,8 +493,6 @@ async def clean_image(request: dict):
 @app.post("/api/upload-image")
 async def upload_image(file: UploadFile = File(...)):
     """上传图像文件"""
-    import shutil
-    
     # 检查文件类型
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="只支持图像文件")
@@ -587,7 +586,6 @@ async def proxy_image(url: str):
         print(f"✅ 图片代理成功，大小: {len(response.content)} bytes")
         
         # 返回图片内容
-        from fastapi.responses import Response
         return Response(
             content=response.content,
             media_type=content_type,
@@ -719,8 +717,6 @@ async def merge_canvas(request: dict):
 async def download_image_proxy(image_url: str):
     """代理下载外部图像，解决跨域问题"""
     try:
-        from fastapi.responses import StreamingResponse
-        
         # 获取图像数据
         response = requests.get(image_url, timeout=30, stream=True)
         response.raise_for_status()

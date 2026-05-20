@@ -287,3 +287,165 @@ class TestBrushFunctionsLogic:
         assert "ctx.globalAlpha" in func_body or "canvasContext" in func_body, (
             "updateBrushOpacity does not update canvas context"
         )
+
+
+# ---------------------------------------------------------------------------
+# S5: Redundant inline imports removed from backend.py
+# ---------------------------------------------------------------------------
+class TestTopLevelImports:
+    """Verify inline imports have been moved to top-level in backend.py."""
+
+    def test_no_inline_shutil_import(self):
+        """shutil should be imported at module level, not inline."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        lines = open(backend_path, encoding="utf-8").readlines()
+        for i, line in enumerate(lines):
+            # Skip the top-level import area (first 35 lines)
+            if i < 35 and "import shutil" in line:
+                continue  # top-level import is fine
+            stripped = line.strip()
+            if stripped.startswith("import shutil"):
+                pytest.fail(
+                    f"Inline 'import shutil' found at line {i+1} in backend.py"
+                )
+
+    def test_no_inline_fastapi_response_import(self):
+        """Response and StreamingResponse should be imported at module level."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        content = open(backend_path, encoding="utf-8").read()
+        # Check top-level import includes Response and StreamingResponse
+        import_line = [l for l in content.split('\n') if 'from fastapi.responses import' in l and not l.strip().startswith('#')]
+        assert len(import_line) > 0, "No fastapi.responses import found"
+        assert 'Response' in import_line[0], "Response not in top-level fastapi.responses import"
+        assert 'StreamingResponse' in import_line[0], "StreamingResponse not in top-level fastapi.responses import"
+        # Check no inline imports remain in function bodies
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            if i < 35:
+                continue  # skip top-level imports
+            stripped = line.strip()
+            if 'from fastapi.responses import' in stripped and not stripped.startswith('#'):
+                pytest.fail(
+                    f"Inline fastapi.responses import found at line {i+1} in backend.py"
+                )
+
+    def test_shutil_top_level_import(self):
+        """shutil should be in the top-level imports of backend.py."""
+        backend_path = os.path.join(REPO_ROOT, "backend.py")
+        lines = open(backend_path, encoding="utf-8").readlines()[:35]
+        assert any("import shutil" in l for l in lines), (
+            "import shutil not found in top-level imports of backend.py"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S6: Configurable debug logger in index.html
+# ---------------------------------------------------------------------------
+class TestDebugLogger:
+    """Verify console.log calls replaced with configurable debug logger."""
+
+    def test_debug_logger_defined(self):
+        """Debug logger object should be defined in index.html."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        assert "const debug = {" in content, (
+            "debug logger object not defined in index.html"
+        )
+        assert "const DEBUG = window.__DEBUG__ || false;" in content, (
+            "DEBUG flag not defined in index.html"
+        )
+
+    def test_no_console_log_outside_logger(self):
+        """console.log should only appear inside the debug logger definition and error handlers."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        lines = open(html_path, encoding="utf-8").readlines()
+        
+        # Find the debug definition block
+        debug_start = None
+        debug_end = None
+        for i, line in enumerate(lines):
+            if 'const debug = {' in line:
+                debug_start = i
+            if debug_start is not None and debug_end is None and '};' in line:
+                debug_end = i
+                break
+        
+        violations = []
+        for i, line in enumerate(lines):
+            if 'console.log(' in line:
+                if debug_start <= i <= debug_end:
+                    continue  # OK - inside logger definition
+                violations.append((i + 1, line.strip()))
+        
+        assert len(violations) == 0, (
+            f"Found {len(violations)} console.log calls outside debug logger: "
+            f"{violations[:5]}"
+        )
+
+    def test_debug_log_calls_present(self):
+        """debug.log calls should replace former console.log calls."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        debug_log_count = content.count('debug.log(')
+        assert debug_log_count > 50, (
+            f"Expected many debug.log calls, found only {debug_log_count}"
+        )
+
+    def test_console_error_preserved(self):
+        """console.error calls should remain for genuine error handling."""
+        html_path = os.path.join(REPO_ROOT, "index.html")
+        content = open(html_path, encoding="utf-8").read()
+        assert content.count('console.error(') > 0, (
+            "console.error calls should be preserved for error handling"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S7: Aspect ratio extracted to _apply_aspect_ratio helper
+# ---------------------------------------------------------------------------
+class TestApplyAspectRatio:
+    """Verify _apply_aspect_ratio helper method exists and is used."""
+
+    def test_apply_aspect_ratio_exists(self):
+        from gemini_api import NanoBananaAPI
+        assert hasattr(NanoBananaAPI, "_apply_aspect_ratio")
+
+    def test_apply_aspect_ratio_sets_all_fields(self):
+        """_apply_aspect_ratio should set config, input.aspect_ratio, and input.image_size."""
+        from gemini_api import NanoBananaAPI
+        api = NanoBananaAPI.__new__(NanoBananaAPI)
+        payload = {"input": {}}
+        result = api._apply_aspect_ratio(payload, "16:9")
+        assert result == "16:9"
+        assert payload["config"]["image_config"]["aspect_ratio"] == "16:9"
+        assert payload["input"]["aspect_ratio"] == "16:9"
+        assert payload["input"]["image_size"] == "16:9"
+
+    def test_apply_aspect_ratio_auto_defaults_to_1x1(self):
+        """When aspect_ratio is 'auto', all fields should default to '1:1'."""
+        from gemini_api import NanoBananaAPI
+        api = NanoBananaAPI.__new__(NanoBananaAPI)
+        payload = {"input": {}}
+        result = api._apply_aspect_ratio(payload, "auto")
+        assert result == "auto"
+        assert payload["config"]["image_config"]["aspect_ratio"] == "1:1"
+        assert payload["input"]["aspect_ratio"] == "1:1"
+        assert payload["input"]["image_size"] == "1:1"
+
+    def test_generate_uses_apply_aspect_ratio(self):
+        import inspect
+        from gemini_api import NanoBananaAPI
+        source = inspect.getsource(NanoBananaAPI.generate_image_with_nano_banana)
+        assert "_apply_aspect_ratio" in source
+        assert "payload[\"config\"] = {" not in source, (
+            "Direct config assignment in generate should use _apply_aspect_ratio"
+        )
+
+    def test_edit_uses_apply_aspect_ratio(self):
+        import inspect
+        from gemini_api import NanoBananaAPI
+        source = inspect.getsource(NanoBananaAPI.edit_image_with_nano_banana)
+        assert "_apply_aspect_ratio" in source
+        assert "payload[\"config\"] = {" not in source, (
+            "Direct config assignment in edit should use _apply_aspect_ratio"
+        )
