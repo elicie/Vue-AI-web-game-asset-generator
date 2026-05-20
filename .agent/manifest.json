@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "runId": "run_spb_12",
+  "issueKey": "SPB-12",
+  "productKey": "vue-ai-web-game-asset-generator",
+  "slot": 6,
+  "namespace": "agent_6",
+  "state": "running",
+  "catalogVersion": "local",
+  "configHash": "sha256:6e1b2671f1227093ee718e2ad43a9d3d61a6fa80ecf6b091e33f07188d44a491",
+  "surfaces": {
+    "web": {
+      "repo": "vue-ai-game-assets",
+      "branch": "feat/SPB-12",
+      "worktree": "/data/dev/.workspace/worktrees/vue-ai-game-assets/SPB-12",
+      "port": 8006,
+      "plannedPort": 8006,
+      "envFilePath": "/data/dev/.workspace/runs/run_spb_12/vue-ai-game-assets/.env",
+      "pr": null
+    }
+  },
+  "workstreams": [
+    {
+      "surface": "web",
+      "repo": "vue-ai-game-assets",
+      "branch": "feat/SPB-12",
+      "baseRef": "main",
+      "worktree": "/data/dev/.workspace/worktrees/vue-ai-game-assets/SPB-12",
+      "port": 8006,
+      "plannedPort": 8006,
+      "envFilePath": "/data/dev/.workspace/runs/run_spb_12/vue-ai-game-assets/.env",
+      "readinessUrl": "http://127.0.0.1:8006/",
+      "devCommand": "python3 /data/dev/scripts/run-fastapi-port.py backend:app"
+    }
+  ],
+  "envOverrides": {
+    "vue-ai-game-assets": {
+      "PORT": "8006"
+    }
+  },
+  "testProfiles": {},
+  "runtimeRouting": {
+    "job_run_spb_12_web_analysis": {
+      "kind": "analysis",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    },
+    "job_run_spb_12_web_implementation": {
+      "kind": "implementation",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    },
+    "job_run_spb_12_web_test": {
+      "kind": "test",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    },
+    "job_run_spb_12_web_review": {
+      "kind": "review",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    },
+    "job_run_spb_12_web_simplify": {
+      "kind": "simplify",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    },
+    "job_run_spb_12_web_release": {
+      "kind": "release",
+      "repo": "vue-ai-game-assets",
+      "state": "queued"
+    }
+  },
+  "processes": [],
+  "artifacts": {
+    "manifest": "manifest.json",
+    "runSummary": "RUN_SUMMARY.md",
+    "testReport": "TEST_REPORT.md",
+    "taskFile": "AGENT_TASK.md"
+  },
+  "generatedAt": "2026-05-20T07:34:34.245Z"
+}
