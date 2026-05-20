@@ -16,7 +16,20 @@ from io import BytesIO
 
 class NanoBananaAPI:
     """Nano-Banana API接口类（基于kie.ai平台）"""
-    
+
+    RATIO_MAPPING = {
+        "auto": "auto",
+        "1:1": "1:1",
+        "9:16": "9:16",
+        "16:9": "16:9",
+        "3:4": "3:4",
+        "4:3": "4:3",
+        "3:2": "3:2",
+        "2:3": "2:3",
+        "5:4": "5:4",
+        "4:5": "4:5"
+    }
+
     def __init__(self, api_key: str):
         """
         初始化Nano-Banana API
@@ -96,22 +109,8 @@ class NanoBananaAPI:
             # 限制图像数量
             num_images = max(1, min(4, num_images))
             
-            # 比例映射：将前端比例转换为API所需格式
-            ratio_mapping = {
-                "auto": "auto",
-                "1:1": "1:1",
-                "9:16": "9:16", 
-                "16:9": "16:9",
-                "3:4": "3:4",
-                "4:3": "4:3",
-                "3:2": "3:2",
-                "2:3": "2:3",
-                "5:4": "5:4",
-                "4:5": "4:5"
-            }
-            
-            # 使用aspect_ratio参数，如果为auto则使用image_size
-            final_image_size = ratio_mapping.get(aspect_ratio, image_size)
+            # 使用class-level比例映射
+            final_image_size = self.RATIO_MAPPING.get(aspect_ratio, image_size)
             
             # 使用原始prompt，让API通过image_config处理比例
             enhanced_prompt = prompt
@@ -239,92 +238,12 @@ class NanoBananaAPI:
                         elif "taskId" in task_data or "recordId" in task_data:
                             task_id = task_data.get("taskId") or task_data.get("recordId")
                             print(f"🔄 任务ID: {task_id}, 轮询任务状态...")
-                            
-                            # 轮询任务状态 - 优化为更快的响应
-                            max_retries = 60  # 增加查询次数
-                            poll_interval = 3  # 减少查询间隔到3秒
-                            
-                            for retry in range(max_retries):
-                                time.sleep(poll_interval)  # 缩短检查间隔
-                                
-                                try:
-                                    # 按照官方示例使用正确的查询方式
-                                    params = {"taskId": task_id}
-                                    query_headers = {"Authorization": f"Bearer {self.api_key}"}
-                                    
-                                    status_response = requests.get(
-                                        f"{self.base_url}{self.query_task_endpoint}",
-                                        headers=query_headers,
-                                        params=params,
-                                        timeout=30
-                                    )
-                                    
-                                    if status_response.status_code == 200:
-                                        status_result = status_response.json()
-                                        print(f"🔄 第{retry+1}次查询，API响应码: {status_result.get('code', 'unknown')}")
-                                        
-                                        if status_result.get("code") == 200 and "data" in status_result:
-                                            data = status_result["data"]
-                                            current_state = data.get("state", "unknown")
-                                            print(f"📋 任务状态: {current_state}")
-                                            
-                                            # 检查任务是否完成
-                                            if current_state == "success":
-                                                # 解析resultJson中的结果
-                                                if "resultJson" in data and data["resultJson"]:
-                                                    try:
-                                                        result_json = json.loads(data["resultJson"])
-                                                        print(f"🎯 解析结果: {result_json}")
-                                                        
-                                                        if "resultUrls" in result_json and result_json["resultUrls"]:
-                                                            for url in result_json["resultUrls"]:
-                                                                try:
-                                                                    # 直接返回URL，也可以选择下载为PIL.Image
-                                                                    # 首先尝试直接返回URL
-                                                                    images.append(url)
-                                                                    print(f"✅ 成功获取图像URL {i+1}: {url}")
-                                                                    
-                                                                    # 如果需要PIL.Image对象，可以取消注释下面的代码
-                                                                    # img_response = requests.get(url, timeout=30)
-                                                                    # if img_response.status_code == 200:
-                                                                    #     image = Image.open(BytesIO(img_response.content))
-                                                                    #     images.append(image)
-                                                                    #     print(f"✅ 成功获取图像 {i+1}: {image.size}")
-                                                                    # else:
-                                                                    #     print(f"❌ 图像下载失败: HTTP {img_response.status_code}")
-                                                                except Exception as e:
-                                                                    print(f"❌ 图像处理异常: {e}")
-                                                            break
-                                                        else:
-                                                            print("⚠️ resultJson中没有找到resultUrls")
-                                                    except json.JSONDecodeError as e:
-                                                        print(f"❌ 解析resultJson失败: {e}")
-                                                        print(f"原始resultJson: {data.get('resultJson', 'None')}")
-                                                else:
-                                                    print("⚠️ 任务成功但没有resultJson")
-                                                    
-                                            elif current_state == "fail":
-                                                fail_msg = data.get("failMsg", "未知错误")
-                                                fail_code = data.get("failCode", "")
-                                                print(f"❌ 任务失败: [{fail_code}] {fail_msg}")
-                                                break
-                                                
-                                            elif current_state in ["waiting", "processing", "pending", "running"]:
-                                                print(f"⏳ 任务仍在处理中... ({retry+1}/{max_retries})")
-                                                continue
-                                            else:
-                                                print(f"🔄 未知任务状态: {current_state}")
-                                        else:
-                                            print(f"❌ API响应错误: 代码={status_result.get('code')}, 消息={status_result.get('message')}")
-                                    else:
-                                        print(f"❌ 查询任务状态失败: {status_response.status_code} - {status_response.text[:100]}")
-                                        
-                                except Exception as e:
-                                    print(f"❌ 查询异常: {e}")
-                            
-                            if not images:
-                                print("⚠️ 任务超时，请稍后手动检查")
-                    
+
+                            result_urls = self._poll_task_result(task_id)
+                            if result_urls:
+                                for url in result_urls:
+                                    images.append(url)
+                                    print(f"✅ 成功获取图像URL {i+1}: {url}")
                 elif response.status_code == 401:
                     print(f"❌ 认证失败: API密钥无效或没有权限")
                     print(f"详细信息: {response.text}")
@@ -379,22 +298,8 @@ class NanoBananaAPI:
             编辑后的图像URL
         """
         try:
-            # 比例映射：将前端比例转换为API所需格式
-            ratio_mapping = {
-                "auto": "auto",
-                "1:1": "1:1",
-                "9:16": "9:16", 
-                "16:9": "16:9",
-                "3:4": "3:4",
-                "4:3": "4:3",
-                "3:2": "3:2",
-                "2:3": "2:3",
-                "5:4": "5:4",
-                "4:5": "4:5"
-            }
-            
-            # 使用aspect_ratio参数，如果为auto则使用image_size
-            final_image_size = ratio_mapping.get(aspect_ratio, image_size)
+            # 使用class-level比例映射
+            final_image_size = self.RATIO_MAPPING.get(aspect_ratio, image_size)
             
             # 使用原始prompt，让API通过image_config处理比例
             enhanced_prompt = prompt
@@ -506,78 +411,13 @@ class NanoBananaAPI:
                     elif "taskId" in task_data or "recordId" in task_data:
                         task_id = task_data.get("taskId") or task_data.get("recordId")
                         print(f"🔄 任务ID: {task_id}, 轮询任务状态...")
-                        
-                        # 轮询任务状态
-                        max_retries = 60
-                        poll_interval = 3
-                        
-                        for retry in range(max_retries):
-                            time.sleep(poll_interval)
-                            
-                            try:
-                                # 查询任务状态
-                                params = {"taskId": task_id}
-                                query_headers = {"Authorization": f"Bearer {self.api_key}"}
-                                
-                                status_response = requests.get(
-                                    f"{self.base_url}{self.query_task_endpoint}",
-                                    headers=query_headers,
-                                    params=params,
-                                    timeout=30
-                                )
-                                
-                                if status_response.status_code == 200:
-                                    status_result = status_response.json()
-                                    print(f"🔄 第{retry+1}次查询，API响应码: {status_result.get('code', 'unknown')}")
-                                    
-                                    if status_result.get("code") == 200 and "data" in status_result:
-                                        data = status_result["data"]
-                                        current_state = data.get("state", "unknown")
-                                        print(f"📋 任务状态: {current_state}")
-                                        
-                                        # 检查任务是否完成
-                                        if current_state == "success":
-                                            # 解析resultJson中的结果
-                                            if "resultJson" in data and data["resultJson"]:
-                                                try:
-                                                    result_json = json.loads(data["resultJson"])
-                                                    print(f"🎯 解析结果: {result_json}")
-                                                    
-                                                    if "resultUrls" in result_json and result_json["resultUrls"]:
-                                                        image_url = result_json["resultUrls"][0]
-                                                        print(f"✅ 成功获取编辑图像URL: {image_url}")
-                                                        return image_url
-                                                    else:
-                                                        print("⚠️ resultJson中没有找到resultUrls")
-                                                except json.JSONDecodeError as e:
-                                                    print(f"❌ 解析resultJson失败: {e}")
-                                                    print(f"原始resultJson: {data.get('resultJson', 'None')}")
-                                            else:
-                                                print("⚠️ 任务成功但没有resultJson")
-                                            break
-                                                
-                                        elif current_state == "fail":
-                                            fail_msg = data.get("failMsg", "未知错误")
-                                            fail_code = data.get("failCode", "")
-                                            print(f"❌ 任务失败: [{fail_code}] {fail_msg}")
-                                            # 返回具体的错误信息
-                                            return f"ERROR: [{fail_code}] {fail_msg}"
-                                            
-                                        elif current_state in ["waiting", "processing", "pending", "running", "generating"]:
-                                            print(f"⏳ 任务仍在处理中... ({retry+1}/{max_retries})")
-                                            continue
-                                        else:
-                                            print(f"🔄 未知任务状态: {current_state}")
-                                    else:
-                                        print(f"❌ API响应错误: 代码={status_result.get('code')}, 消息={status_result.get('message')}")
-                                else:
-                                    print(f"❌ 查询任务状态失败: {status_response.status_code} - {status_response.text[:100]}")
-                                    
-                            except Exception as e:
-                                print(f"❌ 查询异常: {e}")
-                        
-                        print("⚠️ 任务超时，请稍后手动检查")
-            
+
+                        result_urls = self._poll_task_result(task_id)
+                        if result_urls:
+                            image_url = result_urls[0]
+                            print(f"✅ 成功获取编辑图像URL: {image_url}")
+                            return image_url
+
             elif response.status_code == 401:
                 print(f"❌ 认证失败: API密钥无效或没有权限")
                 print(f"详细信息: {response.text}")
@@ -608,7 +448,83 @@ class NanoBananaAPI:
                 print("2. 可以尝试重新编辑")
             
             return None
-    
+
+    def _poll_task_result(self, task_id: str) -> Optional[List[str]]:
+        """
+        轮询异步任务状态直到完成或超时。
+
+        Args:
+            task_id: API返回的任务ID (taskId or recordId)
+
+        Returns:
+            成功时返回 resultUrls 列表；失败时返回 None。
+            失败信息通过 stderr 打印。
+        """
+        max_retries = 60
+        poll_interval = 3
+
+        for retry in range(max_retries):
+            time.sleep(poll_interval)
+
+            try:
+                params = {"taskId": task_id}
+                query_headers = {"Authorization": f"Bearer {self.api_key}"}
+
+                status_response = requests.get(
+                    f"{self.base_url}{self.query_task_endpoint}",
+                    headers=query_headers,
+                    params=params,
+                    timeout=30
+                )
+
+                if status_response.status_code == 200:
+                    status_result = status_response.json()
+                    print(f"🔄 第{retry+1}次查询，API响应码: {status_result.get('code', 'unknown')}")
+
+                    if status_result.get("code") == 200 and "data" in status_result:
+                        data = status_result["data"]
+                        current_state = data.get("state", "unknown")
+                        print(f"📋 任务状态: {current_state}")
+
+                        if current_state == "success":
+                            if "resultJson" in data and data["resultJson"]:
+                                try:
+                                    result_json = json.loads(data["resultJson"])
+                                    print(f"🎯 解析结果: {result_json}")
+
+                                    if "resultUrls" in result_json and result_json["resultUrls"]:
+                                        return result_json["resultUrls"]
+                                    else:
+                                        print("⚠️ resultJson中没有找到resultUrls")
+                                except json.JSONDecodeError as e:
+                                    print(f"❌ 解析resultJson失败: {e}")
+                                    print(f"原始resultJson: {data.get('resultJson', 'None')}")
+                            else:
+                                print("⚠️ 任务成功但没有resultJson")
+                            return None
+
+                        elif current_state == "fail":
+                            fail_msg = data.get("failMsg", "未知错误")
+                            fail_code = data.get("failCode", "")
+                            print(f"❌ 任务失败: [{fail_code}] {fail_msg}")
+                            return None
+
+                        elif current_state in ["waiting", "processing", "pending", "running", "generating"]:
+                            print(f"⏳ 任务仍在处理中... ({retry+1}/{max_retries})")
+                            continue
+                        else:
+                            print(f"🔄 未知任务状态: {current_state}")
+                    else:
+                        print(f"❌ API响应错误: 代码={status_result.get('code')}, 消息={status_result.get('message')}")
+                else:
+                    print(f"❌ 查询任务状态失败: {status_response.status_code} - {status_response.text[:100]}")
+
+            except Exception as e:
+                print(f"❌ 查询异常: {e}")
+
+        print("⚠️ 任务超时，请稍后手动检查")
+        return None
+
     def _translate_to_english(self, chinese_prompt: str) -> str:
         """
         简单的中文到英文翻译（基于常见编辑指令）

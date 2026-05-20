@@ -20,13 +20,13 @@ import os
 import sys
 import tempfile
 import threading
-from PIL import Image
+from PIL import Image, ImageDraw
 import io
+import base64
 import requests
 
 # 添加当前目录到Python路径，以便导入gemini_api
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append('..')
 
 try:
     from gemini_api import NanoBananaAPI
@@ -444,12 +444,9 @@ async def clean_image(request: dict):
                     image_data = f.read()
                     
                     # 检查原图尺寸
-                    from PIL import Image
-                    import io
                     img = Image.open(io.BytesIO(image_data))
                     print(f"📐 本地图片原始尺寸: {img.width} x {img.height}")
                     
-                    import base64
                     base64_data = base64.b64encode(image_data).decode('utf-8')
                     # 添加MIME类型前缀
                     clean_base64 = f"data:image/png;base64,{base64_data}"
@@ -462,16 +459,12 @@ async def clean_image(request: dict):
         
         # 如果是网络URL，下载并转换
         elif image_url.startswith(('http://', 'https://')):
-            import requests
             response = requests.get(image_url, timeout=10)
             if response.status_code == 200:
                 # 检查下载图片的尺寸
-                from PIL import Image
-                import io
                 img = Image.open(io.BytesIO(response.content))
                 print(f"📐 网络图片下载尺寸: {img.width} x {img.height}")
                 
-                import base64
                 base64_data = base64.b64encode(response.content).decode('utf-8')
                 # 检测MIME类型
                 content_type = response.headers.get('content-type', 'image/png')
@@ -623,10 +616,6 @@ async def merge_canvas(request: dict):
         print(f"🎨 绘制路径数量: {len(paths)}")
         
         # 使用PIL创建合成图像
-        from PIL import Image, ImageDraw
-        import requests
-        import io
-        import base64
         
         # 创建基础图像
         if background_image_url:
@@ -842,11 +831,6 @@ async def chat(request: ChatRequest):
                 # Base64图像数据 - 保存为临时文件并上传
                 print(f"🎨 处理Base64图像数据")
                 try:
-                    import base64
-                    import tempfile
-                    from PIL import Image
-                    import io
-                    
                     # 解析Base64数据
                     header, data = input_image_data.split(',', 1)
                     image_data = base64.b64decode(data)
