@@ -6,9 +6,6 @@
     <title>🍌 Nano-Banana AI | Vue版本</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <!-- Fabric.js - 功能丰富的Canvas库 -->
-    <!-- 🚨 移除Fabric.js，使用原生Canvas API -->
-    <!-- <script src="https://unpkg.com/fabric@6.0.2/dist/fabric.min.js"></script> -->
     <style>
         * {
             margin: 0;
@@ -1291,8 +1288,6 @@
                 const modalMode = ref('draw'); // 'draw' 或 'edit'
                 const modalCanvas = ref(null);
                 const canvasContext = ref(null);
-                // 🚨 移除fabricCanvas，使用原生Canvas
-                
                 // 原生Canvas绘图状态
                 const isDrawing = ref(false);
                 const lastX = ref(0);
@@ -1317,7 +1312,7 @@
                 const currentMaskData = ref(''); // 当前遮罩数据（Base64）
 
                 // API基础URL
-                const API_BASE = 'http://localhost:8000';
+                const API_BASE = window.location.origin;
 
                 // 获取对话列表
                 const loadConversations = async () => {
@@ -1833,217 +1828,6 @@
                         return date.toLocaleDateString('ko-KR');
                     }
                 };
-
-                // 🚨 所有Fabric.js导出函数已禁用
-                /*
-                const exportTaintedCanvas = async (canvas) => {
-                    try {
-                        console.log('🔄 开始重绘Canvas以避免污染...');
-                        
-                        // 创建新的干净Canvas
-                        const cleanCanvas = document.createElement('canvas');
-                        const cleanCtx = cleanCanvas.getContext('2d');
-                        
-                        cleanCanvas.width = fabricCanvas.width;
-                        cleanCanvas.height = fabricCanvas.height;
-                        
-                        console.log('📐 重绘Canvas尺寸设置为:', cleanCanvas.width, 'x', cleanCanvas.height);
-                        
-                        // 设置白色背景
-                        cleanCtx.fillStyle = 'white';
-                        cleanCtx.fillRect(0, 0, cleanCanvas.width, cleanCanvas.height);
-                        
-                        // 获取所有Fabric对象
-                        const objects = fabricCanvas.getObjects();
-                        console.log('📦 找到', objects.length, '个对象需要重绘');
-                        
-                        // 逐个重绘对象
-                        for (let i = 0; i < objects.length; i++) {
-                            const obj = objects[i];
-                            console.log('🎨 重绘对象', i + 1, ':', obj.type);
-                            
-                            if (obj.type === 'image') {
-                                // 重绘图片对象
-                                await redrawImageObject(cleanCtx, obj);
-                            } else if (obj.type === 'path') {
-                                // 重绘路径对象（用户绘制的线条）
-                                redrawPathObject(cleanCtx, obj);
-                            }
-                        }
-                        
-                        // 导出干净的Canvas
-                        const cleanImageData = cleanCanvas.toDataURL('image/png', 1.0);
-                        console.log('✅ 干净Canvas导出成功');
-                        
-                        return cleanImageData;
-                        
-                    } catch (error) {
-                        console.error('❌ 重绘Canvas失败:', error);
-                        throw new Error('Canvas重绘失败: ' + error.message);
-                    }
-                };
-
-                // 重绘图片对象到干净Canvas
-                const redrawImageObject = (ctx, imageObj) => {
-                    return new Promise((resolve, reject) => {
-                        try {
-                            // 获取图片的原始URL
-                            const imageSrc = imageObj._originalElement ? imageObj._originalElement.src : imageObj.getSrc();
-                            console.log('🖼️ 重绘图片:', imageSrc);
-                            
-                            // 先尝试从Fabric对象中获取像素数据
-                            try {
-                                // 创建临时canvas来获取图片数据
-                                const tempCanvas = document.createElement('canvas');
-                                const tempCtx = tempCanvas.getContext('2d');
-                                
-                                tempCanvas.width = imageObj.width * imageObj.scaleX;
-                                tempCanvas.height = imageObj.height * imageObj.scaleY;
-                                
-                                // 尝试直接从Fabric对象获取图片元素
-                                const imgElement = imageObj.getElement();
-                                if (imgElement) {
-                                    tempCtx.drawImage(imgElement, 0, 0, tempCanvas.width, tempCanvas.height);
-                                    
-                                    // 应用变换矩阵到目标Canvas
-                                    ctx.save();
-                                    const matrix = imageObj.calcTransformMatrix();
-                                    ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
-                                    
-                                    // 绘制到目标Canvas
-                                    ctx.drawImage(tempCanvas, -imageObj.width/2, -imageObj.height/2, imageObj.width, imageObj.height);
-                                    
-                                    ctx.restore();
-                                    resolve();
-                                    return;
-                                }
-                            } catch (fabricError) {
-                                console.warn('⚠️ 从Fabric对象获取图片失败:', fabricError);
-                            }
-                            
-                            // 备用方案：重新加载图片
-                            const img = new Image();
-                            img.onload = () => {
-                                try {
-                                    // 应用变换矩阵
-                                    ctx.save();
-                                    
-                                    const matrix = imageObj.calcTransformMatrix();
-                                    ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
-                                    
-                                    // 绘制图片
-                                    ctx.drawImage(img, -imageObj.width/2, -imageObj.height/2, imageObj.width, imageObj.height);
-                                    
-                                    ctx.restore();
-                                    resolve();
-                                } catch (drawError) {
-                                    console.warn('⚠️ 图片绘制失败:', drawError);
-                                    resolve();
-                                }
-                            };
-                            
-                            img.onerror = () => {
-                                console.warn('⚠️ 图片重新加载失败，跳过该图片');
-                                resolve();
-                            };
-                            
-                            // 使用原始图片URL，不设置crossOrigin
-                            img.src = imageSrc;
-                            
-                        } catch (error) {
-                            console.warn('⚠️ 图片对象重绘出错:', error);
-                            resolve();
-                        }
-                    });
-                };
-
-                // 重绘路径对象到干净Canvas
-                const redrawPathObject = (ctx, pathObj) => {
-                    try {
-                        ctx.save();
-                        
-                        // 设置路径样式
-                        ctx.strokeStyle = pathObj.stroke || '#000000';
-                        ctx.lineWidth = pathObj.strokeWidth || 1;
-                        ctx.lineCap = pathObj.strokeLineCap || 'round';
-                        ctx.lineJoin = pathObj.strokeLineJoin || 'round';
-                        ctx.globalAlpha = pathObj.opacity || 1;
-                        
-                        // 应用变换
-                        const matrix = pathObj.calcTransformMatrix();
-                        ctx.transform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
-                        
-                        // 绘制路径
-                        const path = pathObj.path;
-                        if (path && path.length > 0) {
-                            ctx.beginPath();
-                            
-                            for (let i = 0; i < path.length; i++) {
-                                const point = path[i];
-                                if (point[0] === 'M') {
-                                    ctx.moveTo(point[1], point[2]);
-                                } else if (point[0] === 'L') {
-                                    ctx.lineTo(point[1], point[2]);
-                                } else if (point[0] === 'Q') {
-                                    ctx.quadraticCurveTo(point[1], point[2], point[3], point[4]);
-                                } else if (point[0] === 'C') {
-                                    ctx.bezierCurveTo(point[1], point[2], point[3], point[4], point[5], point[6]);
-                                }
-                            }
-                            
-                            ctx.stroke();
-                        }
-                        
-                        ctx.restore();
-                        
-                    } catch (error) {
-                        console.warn('⚠️ 路径对象重绘出错:', error);
-                    }
-                };
-
-                // 服务器端图片合成备用方案
-                const serverSideImageMerge = async () => {
-                    try {
-                        console.log('📤 发送绘图数据到服务器进行合成...');
-                        
-                        // 收集画布上的所有数据
-                        const canvasData = {
-                            width: fabricCanvas.value.width,
-                            height: fabricCanvas.value.height,
-                            backgroundImage: currentEditingImageUrl.value,
-                            paths: []
-                        };
-                        
-                        // 收集所有绘制路径
-                        const objects = fabricCanvas.value.getObjects();
-                        for (const obj of objects) {
-                            if (obj.type === 'path') {
-                                canvasData.paths.push({
-                                    path: obj.path,
-                                    stroke: obj.stroke,
-                                    strokeWidth: obj.strokeWidth,
-                                    transform: obj.calcTransformMatrix()
-                                });
-                            }
-                        }
-                        
-                        console.log('📦 发送数据:', canvasData);
-                        
-                        // 发送到服务器
-                        const response = await axios.post(`${API_BASE}/api/merge-canvas`, canvasData);
-                        
-                        if (response.data.success) {
-                            return response.data.imageData; // 服务器返回Base64数据
-                        } else {
-                            throw new Error('服务器合成失败: ' + response.data.error);
-                        }
-                        
-                    } catch (error) {
-                        console.error('서버 측 합성 실패:', error);
-                        throw error;
-                    }
-                };
-                */
 
                 // 测试图片是否可访问
                 const testImageAccess = (imageUrl) => {
@@ -2757,9 +2541,7 @@
                     }
                 };
 
-                // 🚨 所有Fabric.js函数已移除，使用原生Canvas系统
 
-                // 🎨 所有Fabric.js代码已完全移除
 
                 // 🎨 原生Canvas设置绘图模式
                 const setDrawingMode = (mode) => {
@@ -2824,7 +2606,7 @@
                     console.log('🧹 画布已清空');
                 };
 
-                // 🚨 原生Canvas版本的undoDrawing和updateUndoState已在上方定义
+                // undoDrawing and updateUndoState defined above
 
                 const cancelDrawing = () => {
                     closeDrawingModal();

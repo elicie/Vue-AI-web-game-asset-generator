@@ -892,4 +892,3 @@ def create_gemini_api(api_key: str = "", use_mock: bool = False) -> Union[NanoBa
         return MockGeminiAPI(api_key)
     else:
         return NanoBananaAPI(api_key)
-        return NanoBananaAPI(api_key)

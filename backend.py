@@ -11,12 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional, Tuple
+from contextlib import asynccontextmanager
 import json
 import uuid
 import asyncio
 from datetime import datetime
 import os
 import sys
+import tempfile
+import threading
 from PIL import Image
 import io
 import requests
@@ -31,7 +34,23 @@ except ImportError:
     print("❌ 无法导入gemini_api模块，请确保文件存在")
     sys.exit(1)
 
-app = FastAPI(title="Nano-Banana AI", description="Vue + FastAPI AI对话应用")
+# 全局变量（在 lifespan 中初始化）
+api_client = None
+conversations_db = {}
+active_connections: List[WebSocket] = []
+_db_lock = threading.Lock()  # Protect conversations_db and file I/O
+
+# Lifespan: replace import-time startup_init() with proper lifecycle
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Run startup tasks inside the async event loop, not at import time."""
+    startup_init()
+    yield
+    # Shutdown: persist any unsaved state
+    with _db_lock:
+        _save_conversations_unlocked()
+
+app = FastAPI(title="Nano-Banana AI", description="Vue + FastAPI AI对话应用", lifespan=lifespan)
 
 # CORS配置
 app.add_middleware(
@@ -79,10 +98,7 @@ class ChatResponse(BaseModel):
     is_image: bool = False
     image_resolution: Optional[str] = None  # 新增：图像分辨率信息
 
-# 全局变量
-api_client = None
-conversations_db = {}
-active_connections: List[WebSocket] = []
+
 
 # 初始化API客户端
 def init_api():
@@ -242,8 +258,9 @@ def load_conversations():
         print(f"❌ 加载对话历史失败: {e}")
         conversations_db = {}
 
-# 保存对话历史
-def save_conversations():
+# 保存对话历史（无锁版本，调用者须持有 _db_lock）
+def _save_conversations_unlocked():
+    """Atomic write: write to temp file then rename. Caller must hold _db_lock."""
     try:
         history_file = "conversation_history.json"
         data = {}
@@ -252,7 +269,6 @@ def save_conversations():
             history = []
             for msg in conversation.messages:
                 if msg.role == "user":
-                    # 保存用户消息，包括图片信息
                     user_data = {"content": msg.content, "role": "user"}
                     if hasattr(msg, 'input_image_url') and msg.input_image_url:
                         user_data["input_image_url"] = msg.input_image_url
@@ -269,12 +285,30 @@ def save_conversations():
                 'timestamp': conversation.created_at
             }
         
-        with open(history_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        # Atomic write: temp file + rename
+        dir_name = os.path.dirname(os.path.abspath(history_file))
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix='.json')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, history_file)  # atomic on POSIX
+        except BaseException:
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
             
         print(f"✅ 保存了 {len(data)} 条对话历史")
     except Exception as e:
         print(f"❌ 保存对话历史失败: {e}")
+
+
+def save_conversations():
+    """Thread-safe wrapper that acquires the lock before writing."""
+    with _db_lock:
+        _save_conversations_unlocked()
 
 # WebSocket连接管理
 async def connect_websocket(websocket: WebSocket):
@@ -515,10 +549,19 @@ async def upload_image(file: UploadFile = File(...)):
 @app.get("/uploads/{filename}")
 async def get_uploaded_file(filename: str):
     """获取上传的文件"""
-    file_path = os.path.join("uploads", filename)
-    if not os.path.exists(file_path):
+    # Sanitize filename to prevent path traversal
+    safe_name = os.path.basename(filename)
+    if safe_name != filename:
+        raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
+    file_path = os.path.join("uploads", safe_name)
+    # Resolve to absolute path and verify it stays within uploads/
+    uploads_dir = os.path.abspath("uploads")
+    resolved_path = os.path.abspath(file_path)
+    if not resolved_path.startswith(uploads_dir + os.sep) and resolved_path != uploads_dir:
+        raise HTTPException(status_code=400, detail="잘못된 파일 경로입니다")
+    if not os.path.exists(resolved_path):
         raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(file_path)
+    return FileResponse(resolved_path)
 
 @app.get("/api/proxy-image")
 async def proxy_image(url: str):
@@ -1031,7 +1074,7 @@ async def chat(request: ChatRequest):
         else:
             # 文本对话
             print(f"💬 处理文本对话: {request.message}")
-            ai_response = api_client.generate_text_with_gemini(request.message)
+            ai_response = api_client.generate_content(request.message)
             
             ai_message = Message(
                 role="assistant",
@@ -1080,9 +1123,6 @@ def startup_init():
         print("❌ API初始化失败，应用可能无法正常工作")
     load_conversations()
     print("✅ 应用启动完成！")
-
-# 在主函数中调用初始化
-startup_init()
 
 # 静态文件（Vue构建后的文件）
 # app.mount("/static", StaticFiles(directory="dist"), name="static")  # 单文件应用暂不需要
